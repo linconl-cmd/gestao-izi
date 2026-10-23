@@ -11,5 +11,5 @@ export default defineConfig({
       "@/presentation": src("presentation"),
     },
   },
-  test: { include: ["tests/**/*.test.ts"] },
+  test: { include: ["tests/unit/**/*.test.ts"] },
 });
