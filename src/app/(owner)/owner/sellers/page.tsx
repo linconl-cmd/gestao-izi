@@ -16,17 +16,17 @@ export default async function SellersPage({
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_20rem]">
       <section>
-        <h1 className="mb-4 text-xl font-semibold">Vendedores</h1>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">Vendedores</h1>
         <Flash error={error} ok={ok} />
         {sellers.length === 0 ? (
-          <p className="text-zinc-500">Nenhum vendedor cadastrado.</p>
+          <p className="text-muted-foreground">Nenhum vendedor cadastrado.</p>
         ) : (
-          <ul className="divide-y divide-zinc-200 rounded border border-zinc-200">
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft">
             {sellers.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
                   <p className="font-medium">{s.fullName}</p>
-                  <p className="text-sm text-zinc-500">
+                  <p className="text-sm text-muted-foreground">
                     {s.email} · {s.isActive ? "ativo" : "inativo"}
                   </p>
                 </div>
@@ -41,7 +41,7 @@ export default async function SellersPage({
             ))}
           </ul>
         )}
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-muted-foreground">
           Desativar bloqueia o login no próximo refresh do token (até 1 h para sessões já abertas).
         </p>
       </section>

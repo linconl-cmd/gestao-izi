@@ -25,7 +25,7 @@ export default async function ProductDetailPage({
   return (
     <div className="max-w-3xl">
       <Link href="/owner/products" className={linkButtonClass}>← Produtos</Link>
-      <h1 className="mb-4 mt-2 text-xl font-semibold">{product.name}</h1>
+      <h1 className="mb-6 mt-2 text-2xl font-semibold tracking-tight">{product.name}</h1>
       <Flash error={error} ok={ok} />
 
       <form action={updateProductAction} className="mb-2 grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -46,26 +46,26 @@ export default async function ProductDetailPage({
       </form>
 
       <h2 className="mb-2 text-lg font-semibold">Variantes</h2>
-      <ul className="mb-8 divide-y divide-zinc-200 rounded border border-zinc-200">
+      <ul className="mb-8 divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft">
         {product.variants.map((v) => (
           <li key={v.id} className="px-4 py-3">
             <p className="mb-2 text-sm">
               <strong>{v.sku}</strong> · {[v.size, v.color].filter(Boolean).join(" / ") || "—"}
-              {v.barcode && <span className="text-zinc-500"> · {v.barcode}</span>}
+              {v.barcode && <span className="text-muted-foreground"> · {v.barcode}</span>}
             </p>
             <form action={updateVariantAction} className="flex flex-wrap items-end gap-2">
               <input type="hidden" name="productId" value={product.id} />
               <input type="hidden" name="variantId" value={v.id} />
-              <label className="text-xs text-zinc-500">Estoque
+              <label className="text-xs text-muted-foreground">Estoque
                 <input name="stockQuantity" type="number" min={0} defaultValue={v.stockQuantity} className={`${inputClass} block w-24`} />
               </label>
-              <label className="text-xs text-zinc-500">Mínimo
+              <label className="text-xs text-muted-foreground">Mínimo
                 <input name="minStock" type="number" min={0} defaultValue={v.minStock} className={`${inputClass} block w-24`} />
               </label>
-              <label className="text-xs text-zinc-500">Preço (vazio = base)
+              <label className="text-xs text-muted-foreground">Preço (vazio = base)
                 <input name="variantPrice" inputMode="decimal" defaultValue={v.price ? v.price.toDecimal().toFixed(2) : ""} className={`${inputClass} block w-32`} />
               </label>
-              <label className="text-xs text-zinc-500">Situação
+              <label className="text-xs text-muted-foreground">Situação
                 <select name="isActive" defaultValue={String(v.isActive)} className={`${inputClass} block`}>
                   <option value="true">Ativa</option>
                   <option value="false">Inativa</option>

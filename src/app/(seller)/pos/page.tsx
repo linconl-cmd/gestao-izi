@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { PosTerminal } from "@/presentation/components/pos/pos-terminal";
+import { withFlash } from "@/presentation/lib/action-result";
 import { loadPosCatalog } from "@/presentation/lib/pos-catalog";
 import { requireUser } from "@/presentation/lib/require-user";
-import { withFlash } from "@/presentation/lib/action-result";
 
 export default async function PosPage() {
   const { container, user } = await requireUser("owner", "seller");

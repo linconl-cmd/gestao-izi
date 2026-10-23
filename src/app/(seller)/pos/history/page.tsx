@@ -7,19 +7,19 @@ export default async function PosHistoryPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold">Minhas vendas</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Minhas vendas</h1>
       {sales.length === 0 ? (
-        <p className="text-zinc-500">Nenhuma venda ainda.</p>
+        <p className="text-muted-foreground">Nenhuma venda ainda.</p>
       ) : (
-        <ul className="divide-y divide-zinc-200 rounded border border-zinc-200">
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft">
           {sales.map((s) => (
             <li key={s.id} className="px-4 py-3 text-sm">
               <p className="font-medium">
                 {s.total.format()} · {PAYMENT_LABELS[s.paymentMethod]}
-                {s.status === "cancelled" && <span className="text-red-600"> · cancelada</span>}
+                {s.status === "cancelled" && <span className="text-destructive"> · cancelada</span>}
               </p>
-              <p className="text-zinc-500">{s.createdAt.toLocaleString("pt-BR")}</p>
-              <p className="text-zinc-500">
+              <p className="text-muted-foreground">{s.createdAt.toLocaleString("pt-BR")}</p>
+              <p className="text-muted-foreground">
                 {s.items.map((i) => `${i.quantity}× ${i.productName}${i.variantLabel ? ` (${i.variantLabel})` : ""}`).join(", ")}
               </p>
             </li>

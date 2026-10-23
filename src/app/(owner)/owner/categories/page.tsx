@@ -13,16 +13,16 @@ export default async function CategoriesPage({
 
   return (
     <div className="max-w-xl">
-      <h1 className="mb-4 text-xl font-semibold">Categorias</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Categorias</h1>
       <Flash error={error} ok={ok} />
       <form action={createCategoryAction} className="mb-6 flex gap-2">
         <input name="name" required placeholder="Nova categoria" className={`${inputClass} flex-1`} />
         <button type="submit" className={buttonClass}>Adicionar</button>
       </form>
       {categories.length === 0 ? (
-        <p className="text-zinc-500">Nenhuma categoria.</p>
+        <p className="text-muted-foreground">Nenhuma categoria.</p>
       ) : (
-        <ul className="divide-y divide-zinc-200 rounded border border-zinc-200">
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft">
           {categories.map((c) => (
             <li key={c.id} className="flex items-center justify-between px-4 py-2">
               <span>{c.name}</span>

@@ -1,4 +1,7 @@
+import { Shirt } from "lucide-react";
 import { signInAction } from "@/presentation/actions/auth";
+import { buttonClass, inputClass } from "@/presentation/components/shared/styles";
+import { ThemeToggle } from "@/presentation/components/layout/theme-toggle";
 
 const MESSAGES: Record<string, string> = {
   invalid: "Informe e-mail e senha válidos.",
@@ -15,16 +18,23 @@ export default async function LoginPage({
   const message = error ? MESSAGES[error] : undefined;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
-      <h1 className="text-2xl font-semibold">Entrar</h1>
-      <form action={signInAction} className="flex flex-col gap-3">
-        <input name="email" type="email" required autoComplete="email" placeholder="E-mail"
-          className="rounded border border-zinc-300 px-3 py-2" />
-        <input name="password" type="password" required autoComplete="current-password" placeholder="Senha"
-          className="rounded border border-zinc-300 px-3 py-2" />
-        {message && <p role="alert" className="text-sm text-red-600">{message}</p>}
-        <button type="submit" className="rounded bg-zinc-900 px-3 py-2 text-white">Entrar</button>
-      </form>
+    <main className="relative grid min-h-dvh place-items-center px-4">
+      <ThemeToggle className="absolute top-4 right-4" />
+      <div className="w-full max-w-sm space-y-8">
+        <div className="space-y-3 text-center">
+          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground">
+            <Shirt className="size-6" />
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">Gestão Izi</h1>
+          <p className="text-sm text-muted-foreground">Entre para abrir o caixa ou gerenciar sua loja.</p>
+        </div>
+        <form action={signInAction} className="space-y-3 rounded-2xl border bg-card p-6 shadow-soft">
+          <input name="email" type="email" required autoComplete="email" placeholder="E-mail" aria-label="E-mail" className={inputClass} />
+          <input name="password" type="password" required autoComplete="current-password" placeholder="Senha" aria-label="Senha" className={inputClass} />
+          {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
+          <button type="submit" className={`${buttonClass} w-full`}>Entrar</button>
+        </form>
+      </div>
     </main>
   );
 }

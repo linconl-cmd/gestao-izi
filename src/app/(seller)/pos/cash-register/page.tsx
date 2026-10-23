@@ -21,12 +21,12 @@ export default async function CashRegisterPage({
 
   return (
     <div className="max-w-md">
-      <h1 className="mb-4 text-xl font-semibold">Caixa</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Caixa</h1>
       <Flash error={error} ok={ok} />
 
       {open ? (
         <section className="mb-8">
-          <p className="mb-1 text-sm text-zinc-600">
+          <p className="mb-1 text-sm text-muted-foreground">
             Aberto em {open.openedAt.toLocaleString("pt-BR")} com {open.openingAmount.format()}.
           </p>
           <Link href="/pos" className="mb-4 inline-block text-sm underline">Ir para a venda</Link>
@@ -47,7 +47,7 @@ export default async function CashRegisterPage({
       {closed.length > 0 && (
         <section>
           <h2 className="mb-2 text-lg font-semibold">Últimos fechamentos</h2>
-          <ul className="divide-y divide-zinc-200 rounded border border-zinc-200 text-sm">
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft text-sm">
             {closed.map((r) => (
               <li key={r.id} className="px-3 py-2">
                 {r.closedAt?.toLocaleString("pt-BR")} · contado {r.closingAmount?.format() ?? "—"} · esperado{" "}

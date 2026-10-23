@@ -18,23 +18,23 @@ export default async function OwnerSalesPage({
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold">Vendas</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Vendas</h1>
       <Flash error={error} ok={ok} />
       {sales.length === 0 ? (
-        <p className="text-zinc-500">Nenhuma venda registrada.</p>
+        <p className="text-muted-foreground">Nenhuma venda registrada.</p>
       ) : (
-        <ul className="divide-y divide-zinc-200 rounded border border-zinc-200">
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft">
           {sales.map((s) => (
             <li key={s.id} className="flex items-start justify-between gap-4 px-4 py-3">
               <div className="text-sm">
                 <p className="font-medium">
                   {s.total.format()} · {s.paymentMethod}
-                  {s.status === "cancelled" && <span className="text-red-600"> · cancelada</span>}
+                  {s.status === "cancelled" && <span className="text-destructive"> · cancelada</span>}
                 </p>
-                <p className="text-zinc-500">
+                <p className="text-muted-foreground">
                   {s.createdAt.toLocaleString("pt-BR")} · {names.get(s.sellerId) ?? "—"}
                 </p>
-                <p className="text-zinc-500">
+                <p className="text-muted-foreground">
                   {s.items.map((i) => `${i.quantity}× ${i.productName}${i.variantLabel ? ` (${i.variantLabel})` : ""}`).join(", ")}
                 </p>
               </div>

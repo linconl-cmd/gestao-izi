@@ -4,11 +4,13 @@ import { AppShell } from "@/presentation/components/layout/app-shell";
 export default function PosLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell
-      title="PDV"
+      title="Izi · PDV"
+      wide
       nav={[
-        { href: "/pos", label: "Venda" },
-        { href: "/pos/cash-register", label: "Caixa" },
-        { href: "/pos/history", label: "Minhas vendas" },
+        { href: "/pos", label: "PDV", icon: "pos" },
+        { href: "/pos/products", label: "Consulta", icon: "lookup" },
+        { href: "/pos/history", label: "Vendas", icon: "sales" },
+        { href: "/pos/cash-register", label: "Caixa", icon: "cash" },
       ]}
     >
       {children}

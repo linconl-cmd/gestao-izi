@@ -19,31 +19,31 @@ export default async function OwnerProductsPage({
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
       <section>
-        <h1 className="mb-4 text-xl font-semibold">Produtos</h1>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">Produtos</h1>
         <Flash error={error} ok={ok} />
         <form className="mb-4 flex gap-2">
           <input name="q" defaultValue={q} placeholder="Buscar por nome" className={`${inputClass} flex-1`} />
           <button type="submit" className={buttonClass}>Buscar</button>
         </form>
         {products.length === 0 ? (
-          <p className="text-zinc-500">Nenhum produto encontrado.</p>
+          <p className="text-muted-foreground">Nenhum produto encontrado.</p>
         ) : (
-          <ul className="divide-y divide-zinc-200 rounded border border-zinc-200">
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft">
             {products.map((p) => {
               const stock = p.variants.reduce((sum, v) => sum + v.stockQuantity, 0);
               const low = p.variants.some((v) => v.isActive && isLowStock(v));
               return (
                 <li key={p.id}>
-                  <Link href={`/owner/products/${p.id}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-zinc-50">
+                  <Link href={`/owner/products/${p.id}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/60">
                     <div>
                       <p className="font-medium">{p.name}{!p.isActive && " (inativo)"}</p>
-                      <p className="text-sm text-zinc-500">
+                      <p className="text-sm text-muted-foreground">
                         {p.brand ?? "—"} · {p.variants.length} variante(s)
                       </p>
                     </div>
                     <div className="text-right text-sm">
                       <p>{p.basePrice.format()}</p>
-                      <p className={low ? "text-red-600" : "text-zinc-500"}>
+                      <p className={low ? "text-destructive" : "text-muted-foreground"}>
                         {stock} em estoque{low && " · baixo"}
                       </p>
                     </div>
@@ -70,7 +70,7 @@ export default async function OwnerProductsPage({
             <input name="basePrice" required inputMode="decimal" placeholder="Preço (R$)" className={inputClass} />
             <input name="costPrice" inputMode="decimal" placeholder="Custo (R$)" className={inputClass} />
           </div>
-          <p className="text-xs text-zinc-500">Primeira variante</p>
+          <p className="text-xs text-muted-foreground">Primeira variante</p>
           <div className="grid grid-cols-2 gap-2">
             <input name="size" placeholder="Tamanho" className={inputClass} />
             <input name="color" placeholder="Cor" className={inputClass} />
