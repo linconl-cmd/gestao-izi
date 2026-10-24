@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { Money } from "@/core/domain/value-objects/money";
 import { NotFoundError } from "@/core/domain/errors/domain-error";
 import type { Sale } from "@/core/domain/entities/sale";
 import type {
   CreateSaleInput,
   SaleQuery,
   SaleRepository,
+  SaleSummary,
 } from "@/core/domain/repositories/sale-repository";
 import { toSale } from "../mappers/mappers";
 import type { SaleRow } from "../types/rows";
@@ -56,6 +58,27 @@ export class SupabaseSaleRepository implements SaleRepository {
     const { data, error } = await q.range(offset, offset + limit - 1).returns<SaleRow[]>();
     assertNoError(error);
     return (data ?? []).map(toSale);
+  }
+
+  /** Soma no cliente, paginando (o PostgREST limita 1000 linhas por resposta). */
+  async summarize(query: Pick<SaleQuery, "from" | "to" | "sellerId"> = {}): Promise<SaleSummary> {
+    const PAGE = 1000;
+    const MAX_PAGES = 50;
+    let count = 0;
+    let cents = 0;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      let q = this.db.from("sales").select("total").eq("status", "completed").order("id");
+      if (query.from) q = q.gte("created_at", query.from.toISOString());
+      if (query.to) q = q.lte("created_at", query.to.toISOString());
+      if (query.sellerId) q = q.eq("seller_id", query.sellerId);
+      const { data, error } = await q.range(page * PAGE, page * PAGE + PAGE - 1).returns<{ total: number }[]>();
+      assertNoError(error);
+      const rows = data ?? [];
+      count += rows.length;
+      cents += rows.reduce((sum, r) => sum + Money.fromDecimal(r.total).cents, 0);
+      if (rows.length < PAGE) break;
+    }
+    return { count, total: Money.fromCents(cents) };
   }
 
   async cancel(id: string): Promise<Sale> {

@@ -24,7 +24,10 @@ export default async function ProductDetailPage({
 
   return (
     <div className="max-w-3xl">
-      <Link href="/owner/products" className={linkButtonClass}>← Produtos</Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/owner/products" className={linkButtonClass}>← Produtos</Link>
+        <Link href={`/owner/labels?product=${product.id}`} className={linkButtonClass}>Imprimir etiquetas</Link>
+      </div>
       <h1 className="mb-6 mt-2 text-2xl font-semibold tracking-tight">{product.name}</h1>
       <Flash error={error} ok={ok} />
 

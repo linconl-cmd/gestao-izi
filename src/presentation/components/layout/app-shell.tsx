@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  LayoutDashboard,
   LayoutGrid,
   LogOut,
+  Menu,
   PackageSearch,
   PanelLeftClose,
   PanelLeftOpen,
@@ -11,6 +13,7 @@ import {
   Shapes,
   Shirt,
   Store,
+  Tags,
   Users,
   Wallet,
   type LucideIcon,
@@ -21,6 +24,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { signOutAction } from "@/presentation/actions/auth";
 import { ThemeToggle } from "@/presentation/components/layout/theme-toggle";
 import { Button } from "@/presentation/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/presentation/components/ui/sheet";
 import { cn } from "@/presentation/lib/utils";
 
 /** Ícones por nome: componentes não atravessam a fronteira server -> client. */
@@ -34,6 +38,8 @@ const ICONS = {
   lookup: PackageSearch,
   cash: Wallet,
   grid: LayoutGrid,
+  dashboard: LayoutDashboard,
+  labels: Tags,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof ICONS;
@@ -67,6 +73,14 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const primary = nav.length > 5 ? nav.slice(0, 4) : nav;
+  const overflow = nav.length > 5 ? nav.slice(4) : [];
+  const moreActive = overflow.some((i) => isActive(pathname, i.href, nav));
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     try {
@@ -88,11 +102,11 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-dvh md:flex">
+    <div className="min-h-dvh md:flex print:block">
       {/* Sidebar (md+) */}
       <aside
         className={cn(
-          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r bg-card transition-[width] duration-200 md:flex",
+          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r bg-card transition-[width] duration-200 md:flex print:hidden",
           collapsed ? "w-[4.5rem]" : "w-60",
         )}
       >
@@ -141,7 +155,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barra superior (mobile) */}
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur md:hidden print:hidden">
           <span className="flex items-center gap-2 text-sm font-semibold">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Shirt className="size-4" />
@@ -160,7 +174,7 @@ export function AppShell({
 
         <main
           className={cn(
-            "w-full flex-1 p-4 pb-28 md:p-8 md:pb-8",
+            "w-full flex-1 p-4 pb-28 md:p-8 md:pb-8 print:max-w-none print:p-0",
             wide ? "max-w-none" : "mx-auto max-w-6xl",
           )}
         >
@@ -171,10 +185,10 @@ export function AppShell({
       {/* Navegação inferior (mobile): alcance do polegar */}
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-lg items-stretch justify-around">
-          {nav.slice(0, 5).map((item) => {
+          {primary.map((item) => {
             const Icon = ICONS[item.icon];
             const active = isActive(pathname, item.href, nav);
             return (
@@ -195,8 +209,47 @@ export function AppShell({
               </li>
             );
           })}
+          {overflow.length > 0 && (
+            <li className="flex-1">
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                aria-haspopup="dialog"
+                className={cn(
+                  "flex min-h-14 w-full flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium text-muted-foreground transition-colors",
+                  moreActive && "text-primary",
+                )}
+              >
+                <span className={cn("grid h-7 w-12 place-items-center rounded-full transition-colors", moreActive && "bg-accent-soft")}>
+                  <Menu className="size-5" />
+                </span>
+                Mais
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="gap-0 rounded-t-3xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
+          <SheetTitle className="px-2 pb-2 text-base">Mais opções</SheetTitle>
+          <SheetDescription className="sr-only">Outras áreas do sistema</SheetDescription>
+          <ul className="grid gap-1">
+            {overflow.map((item) => {
+              const Icon = ICONS[item.icon];
+              const active = isActive(pathname, item.href, nav);
+              return (
+                <li key={item.href}>
+                  <Link href={item.href} className={cn("flex h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-muted", active && "bg-accent-soft text-accent-soft-foreground")}>
+                    <Icon className="size-5" />
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

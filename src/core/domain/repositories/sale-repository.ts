@@ -26,7 +26,14 @@ export interface SaleQuery {
   offset?: number;
 }
 
+export interface SaleSummary {
+  /** Vendas concluídas (canceladas ficam de fora). */
+  count: number;
+  total: Money;
+}
+
 export interface SaleRepository {
+  summarize(query?: Pick<SaleQuery, "from" | "to" | "sellerId">): Promise<SaleSummary>;
   /** Atômico (RPC create_sale): preço vem do catálogo e o estoque é baixado no banco. */
   create(input: CreateSaleInput): Promise<Sale>;
   findById(id: string): Promise<Sale | null>;

@@ -7,7 +7,7 @@ export function homeFor(role: UserRole): string {
     case "master":
       return "/master/stores";
     case "owner":
-      return "/owner/products";
+      return "/owner";
     case "seller":
       return "/pos";
   }

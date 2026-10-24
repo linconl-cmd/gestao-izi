@@ -6,11 +6,13 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     <AppShell
       title="Gestão Izi"
       nav={[
-        { href: "/owner/products", label: "Produtos", icon: "products" },
-        { href: "/owner/categories", label: "Categorias", icon: "categories" },
-        { href: "/owner/sellers", label: "Vendedores", icon: "sellers" },
-        { href: "/owner/sales", label: "Vendas", icon: "sales" },
+        { href: "/owner", label: "Painel", icon: "dashboard" },
         { href: "/pos", label: "PDV", icon: "pos" },
+        { href: "/owner/products", label: "Produtos", icon: "products" },
+        { href: "/owner/sales", label: "Vendas", icon: "sales" },
+        { href: "/owner/labels", label: "Etiquetas", icon: "labels" },
+        { href: "/owner/sellers", label: "Vendedores", icon: "sellers" },
+        { href: "/owner/categories", label: "Categorias", icon: "categories" },
       ]}
     >
       {children}

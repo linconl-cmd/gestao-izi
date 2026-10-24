@@ -3,6 +3,7 @@ import { CloseCashRegister } from "@/core/application/use-cases/cash-register/cl
 import { OpenCashRegister } from "@/core/application/use-cases/cash-register/open-cash-register";
 import { CreateProduct } from "@/core/application/use-cases/catalog/create-product";
 import { ScanProduct } from "@/core/application/use-cases/catalog/scan-product";
+import { GetOwnerDashboard } from "@/core/application/use-cases/reports/get-owner-dashboard";
 import { CancelSale } from "@/core/application/use-cases/sales/cancel-sale";
 import { RegisterSale } from "@/core/application/use-cases/sales/register-sale";
 import { CreateStoreWithOwner } from "@/core/application/use-cases/stores/create-store-with-owner";
@@ -41,6 +42,7 @@ export function buildContainer(db: SupabaseClient, adminFactory: () => SupabaseC
       createProduct: new CreateProduct(products),
       openCashRegister: new OpenCashRegister(cashRegisters),
       closeCashRegister: new CloseCashRegister(cashRegisters),
+      getOwnerDashboard: new GetOwnerDashboard(sales, products, profiles),
       createSeller: new CreateSeller(provisioner),
       createStoreWithOwner: new CreateStoreWithOwner(stores, provisioner),
     },
