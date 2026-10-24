@@ -81,10 +81,10 @@ export class SupabaseSaleRepository implements SaleRepository {
     return { count, total: Money.fromCents(cents) };
   }
 
-  async cancel(id: string): Promise<Sale> {
+  async cancel(id: string, reason: string): Promise<Sale> {
     const { data, error } = await this.db
       .from("sales")
-      .update({ status: "cancelled" })
+      .update({ status: "cancelled", cancel_reason: reason })
       .eq("id", id)
       .select(SALE_SELECT)
       .maybeSingle<SaleRow>();

@@ -4,7 +4,7 @@ import { loadPosCatalog } from "@/presentation/lib/pos-catalog";
 import { requireUser } from "@/presentation/lib/require-user";
 
 export default async function PosLookupPage() {
-  const { container } = await requireUser("owner", "seller");
+  const { container } = await requireUser("owner", "manager", "seller");
   const catalog = await loadPosCatalog(container);
   return (
     <div className="mx-auto max-w-3xl">

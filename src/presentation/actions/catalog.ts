@@ -16,7 +16,7 @@ const productPath = (id: string) => `${PRODUCTS}/${id}`;
 export async function createCategoryAction(formData: FormData): Promise<void> {
   const d = parseForm(z.object({ name: z.string().trim().min(1, "Informe o nome.") }), formData, CATEGORIES);
   await runAction(CATEGORIES, "Categoria criada.", async () => {
-    const { container, user } = await requireUser("owner");
+    const { container, user } = await requireUser("owner", "manager");
     await container.repositories.categories.create({ storeId: requireStoreId(user), name: d.name });
   });
 }
@@ -24,7 +24,7 @@ export async function createCategoryAction(formData: FormData): Promise<void> {
 export async function deleteCategoryAction(formData: FormData): Promise<void> {
   const d = parseForm(z.object({ id: z.uuid() }), formData, CATEGORIES);
   await runAction(CATEGORIES, "Categoria removida.", async () => {
-    const { container } = await requireUser("owner");
+    const { container } = await requireUser("owner", "manager");
     await container.repositories.categories.delete(d.id);
   });
 }
@@ -54,7 +54,7 @@ const createProductSchema = z.object({
 export async function createProductAction(formData: FormData): Promise<void> {
   const d = parseForm(createProductSchema, formData, PRODUCTS);
   await runAction(PRODUCTS, "Produto criado.", async () => {
-    const { container, user } = await requireUser("owner");
+    const { container, user } = await requireUser("owner", "manager");
     await container.useCases.createProduct.execute(user, {
       name: d.name,
       brand: d.brand,
@@ -90,13 +90,13 @@ export async function updateProductAction(formData: FormData): Promise<void> {
   const path = productPath(String(raw.productId ?? ""));
   const d = parseForm(updateProductSchema, formData, path);
   await runAction(path, "Produto atualizado.", async () => {
-    const { container, user } = await requireUser("owner");
+    const { container, user } = await requireUser("owner", "manager");
     await container.repositories.products.update(d.productId, {
       name: d.name,
       brand: d.brand,
       basePrice: d.basePrice,
     });
-    if (d.costPrice) {
+    if (d.costPrice && user.role === "owner") {
       await container.repositories.products.setCost(requireStoreId(user), d.productId, d.costPrice);
     }
   });
@@ -107,7 +107,7 @@ export async function setProductActiveAction(formData: FormData): Promise<void> 
   const path = productPath(String(raw.productId ?? ""));
   const d = parseForm(z.object({ productId: z.uuid(), isActive: z.enum(["true", "false"]) }), formData, path);
   await runAction(path, null, async () => {
-    const { container } = await requireUser("owner");
+    const { container } = await requireUser("owner", "manager");
     await container.repositories.products.update(d.productId, { isActive: d.isActive === "true" });
   });
 }
@@ -117,7 +117,7 @@ export async function addVariantAction(formData: FormData): Promise<void> {
   const path = productPath(String(raw.productId ?? ""));
   const d = parseForm(z.object({ productId: z.uuid(), ...variantFields }), formData, path);
   await runAction(path, "Variante adicionada.", async () => {
-    const { container, user } = await requireUser("owner");
+    const { container, user } = await requireUser("owner", "manager");
     await container.repositories.products.addVariant(requireStoreId(user), d.productId, {
       size: d.size,
       color: d.color,
@@ -144,7 +144,7 @@ export async function updateVariantAction(formData: FormData): Promise<void> {
   const path = productPath(String(raw.productId ?? ""));
   const d = parseForm(updateVariantSchema, formData, path);
   await runAction(path, "Variante atualizada.", async () => {
-    const { container } = await requireUser("owner");
+    const { container } = await requireUser("owner", "manager");
     await container.repositories.products.updateVariant(d.variantId, {
       price: d.variantPrice as Money | null,
       stockQuantity: d.stockQuantity,

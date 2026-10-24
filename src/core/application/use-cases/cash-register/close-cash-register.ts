@@ -13,7 +13,7 @@ export class CloseCashRegister {
     registerId: string,
     input: { closingAmount: Money; notes?: string | null },
   ): Promise<CashRegister> {
-    assertRole(actor, "owner", "seller");
+    assertRole(actor, "owner", "manager", "seller");
     if (input.closingAmount.isNegative()) throw new ValidationError("Closing amount cannot be negative");
     return this.registers.close(registerId, input);
   }

@@ -10,7 +10,7 @@ export class ScanProduct {
   constructor(private readonly products: ProductRepository) {}
 
   async execute(actor: AuthUser, rawCode: string): Promise<Product> {
-    assertRole(actor, "owner", "seller");
+    assertRole(actor, "owner", "manager", "seller");
     const product = await this.products.findByBarcode(Barcode.create(rawCode));
     if (!product) throw new NotFoundError("Product");
     return product;

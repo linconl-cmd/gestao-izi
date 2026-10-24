@@ -8,7 +8,7 @@ export default async function LabelsPage({
 }: {
   searchParams: Promise<{ product?: string }>;
 }) {
-  const [{ product }, { container }] = await Promise.all([searchParams, requireUser("owner")]);
+  const [{ product }, { container }] = await Promise.all([searchParams, requireUser("owner", "manager")]);
   const catalog = await loadPosCatalog(container);
 
   // /owner/labels?product=ID já traz todas as variantes do produto, com a quantidade do estoque.

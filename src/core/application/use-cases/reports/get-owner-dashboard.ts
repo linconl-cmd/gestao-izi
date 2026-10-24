@@ -28,7 +28,7 @@ export class GetOwnerDashboard {
     actor: AuthUser,
     input: { sellerId?: string; now?: Date; recentLimit?: number } = {},
   ): Promise<OwnerDashboard> {
-    assertRole(actor, "owner");
+    assertRole(actor, "owner", "manager");
     const now = input.now ?? new Date();
 
     const [today, month, lowStock, recentSales, team] = await Promise.all([
@@ -44,7 +44,7 @@ export class GetOwnerDashboard {
       month,
       lowStock,
       recentSales,
-      sellers: team.filter((p) => p.role === "seller" || p.role === "owner"),
+      sellers: team.filter((p) => p.role !== "master"),
     };
   }
 }

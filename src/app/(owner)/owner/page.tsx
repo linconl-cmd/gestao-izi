@@ -19,7 +19,7 @@ export default async function OwnerDashboardPage({
 }: {
   searchParams: Promise<{ seller?: string }>;
 }) {
-  const [{ seller }, { container, user }] = await Promise.all([searchParams, requireUser("owner")]);
+  const [{ seller }, { container, user }] = await Promise.all([searchParams, requireUser("owner", "manager")]);
   const data = await container.useCases.getOwnerDashboard.execute(user, { sellerId: seller || undefined });
 
   const names = new Map(data.sellers.map((p) => [p.id, p.fullName]));

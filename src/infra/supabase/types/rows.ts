@@ -115,5 +115,8 @@ export interface SaleRow {
   total: number;
   notes: string | null;
   created_at: string;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
   sale_items?: SaleItemRow[];
 }

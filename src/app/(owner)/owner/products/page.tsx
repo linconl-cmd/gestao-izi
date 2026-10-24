@@ -10,7 +10,7 @@ export default async function OwnerProductsPage({
 }: {
   searchParams: Promise<{ error?: string; ok?: string; q?: string }>;
 }) {
-  const [{ error, ok, q }, { container }] = await Promise.all([searchParams, requireUser("owner")]);
+  const [{ error, ok, q }, { container, user }] = await Promise.all([searchParams, requireUser("owner", "manager")]);
   const [products, categories] = await Promise.all([
     container.repositories.products.search({ query: q, limit: 100 }),
     container.repositories.categories.list(),
@@ -68,7 +68,9 @@ export default async function OwnerProductsPage({
           </select>
           <div className="grid grid-cols-2 gap-2">
             <input name="basePrice" required inputMode="decimal" placeholder="Preço (R$)" className={inputClass} />
-            <input name="costPrice" inputMode="decimal" placeholder="Custo (R$)" className={inputClass} />
+            {user.role === "owner" && (
+              <input name="costPrice" inputMode="decimal" placeholder="Custo (R$)" className={inputClass} />
+            )}
           </div>
           <p className="text-xs text-muted-foreground">Primeira variante</p>
           <div className="grid grid-cols-2 gap-2">

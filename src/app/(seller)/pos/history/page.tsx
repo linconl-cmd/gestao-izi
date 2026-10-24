@@ -2,7 +2,7 @@ import { PAYMENT_LABELS } from "@/presentation/lib/labels";
 import { requireUser } from "@/presentation/lib/require-user";
 
 export default async function PosHistoryPage() {
-  const { container, user } = await requireUser("owner", "seller");
+  const { container, user } = await requireUser("owner", "manager", "seller");
   const sales = await container.repositories.sales.list({ sellerId: user.id, limit: 30 });
 
   return (

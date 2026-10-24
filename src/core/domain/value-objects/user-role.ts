@@ -1,4 +1,4 @@
-export const USER_ROLES = ["master", "owner", "seller"] as const;
+export const USER_ROLES = ["master", "owner", "manager", "seller"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export function isUserRole(value: unknown): value is UserRole {

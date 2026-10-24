@@ -11,7 +11,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
         { href: "/owner/products", label: "Produtos", icon: "products" },
         { href: "/owner/sales", label: "Vendas", icon: "sales" },
         { href: "/owner/labels", label: "Etiquetas", icon: "labels" },
-        { href: "/owner/sellers", label: "Vendedores", icon: "sellers" },
+        { href: "/owner/sellers", label: "Equipe", icon: "sellers" },
         { href: "/owner/categories", label: "Categorias", icon: "categories" },
       ]}
     >

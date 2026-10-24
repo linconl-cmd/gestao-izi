@@ -29,5 +29,9 @@ export interface Sale {
   readonly total: Money;
   readonly notes: string | null;
   readonly createdAt: Date;
+  /** Auditoria do cancelamento (preenchida pelo banco; imutável). */
+  readonly cancelledAt: Date | null;
+  readonly cancelledBy: string | null;
+  readonly cancelReason: string | null;
   readonly items: readonly SaleItem[];
 }

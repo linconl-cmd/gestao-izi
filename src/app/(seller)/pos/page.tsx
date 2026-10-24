@@ -5,7 +5,7 @@ import { loadPosCatalog } from "@/presentation/lib/pos-catalog";
 import { requireUser } from "@/presentation/lib/require-user";
 
 export default async function PosPage() {
-  const { container, user } = await requireUser("owner", "seller");
+  const { container, user } = await requireUser("owner", "manager", "seller");
   const register = await container.repositories.cashRegisters.findOpenByUser(user.id);
   if (!register) redirect(withFlash("/pos/cash-register", "error", "Abra o caixa para começar a vender."));
 

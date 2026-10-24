@@ -130,5 +130,8 @@ export const toSale = (r: SaleRow): Sale => ({
   total: Money.fromDecimal(r.total),
   notes: r.notes,
   createdAt: new Date(r.created_at),
+  cancelledAt: r.cancelled_at === null ? null : new Date(r.cancelled_at),
+  cancelledBy: r.cancelled_by,
+  cancelReason: r.cancel_reason,
   items: (r.sale_items ?? []).map(toSaleItem),
 });

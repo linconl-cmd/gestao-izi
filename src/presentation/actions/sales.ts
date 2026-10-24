@@ -28,7 +28,7 @@ export async function registerSaleAction(input: unknown): Promise<RegisterSaleRe
   const d = parsed.data;
 
   try {
-    const { container, user } = await requireUser("owner", "seller");
+    const { container, user } = await requireUser("owner", "manager", "seller");
     const sale = await container.useCases.registerSale.execute(user, {
       cashRegisterId: d.cashRegisterId,
       paymentMethod: d.paymentMethod,
@@ -45,9 +45,13 @@ export async function registerSaleAction(input: unknown): Promise<RegisterSaleRe
 
 export async function cancelSaleAction(formData: FormData): Promise<void> {
   const path = "/owner/sales";
-  const d = parseForm(z.object({ id: z.uuid() }), formData, path);
+  const d = parseForm(
+    z.object({ id: z.uuid(), reason: z.string().trim().min(3, "Informe o motivo do cancelamento.") }),
+    formData,
+    path,
+  );
   await runAction(path, "Venda cancelada e estoque estornado.", async () => {
-    const { container, user } = await requireUser("owner");
-    await container.useCases.cancelSale.execute(user, d.id);
+    const { container, user } = await requireUser("owner", "manager");
+    await container.useCases.cancelSale.execute(user, d.id, d.reason);
   });
 }

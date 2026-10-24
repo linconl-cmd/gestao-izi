@@ -37,6 +37,8 @@ const state = {
   sellerA: {} as Actor,
   sellerA2: {} as Actor,
   ownerB: {} as Actor,
+  managerA: {} as Actor,
+  managerSale: "",
   productA: "",
   variantA: "",
   productB: "",
@@ -61,7 +63,7 @@ async function makeStore(tag: string): Promise<string> {
 
 async function makeUser(
   tag: string,
-  role: "master" | "owner" | "seller",
+  role: "master" | "owner" | "manager" | "seller",
   storeId: string | null,
 ): Promise<Actor> {
   const email = `${PREFIX}${RUN}-${tag}@example.com`;
@@ -130,6 +132,7 @@ beforeAll(async () => {
   state.sellerA = await makeUser("seller-a", "seller", state.storeA);
   state.sellerA2 = await makeUser("seller-a2", "seller", state.storeA);
   state.ownerB = await makeUser("owner-b", "owner", state.storeB);
+  state.managerA = await makeUser("manager-a", "manager", state.storeA);
 
   // Catálogo semeado via service role (bypassa RLS).
   for (const [key, storeId, price] of [
@@ -412,9 +415,20 @@ describe("caixa, vendas e estoque", () => {
     const tamper = await state.ownerA.db.from("sales").update({ total: 1 }).eq("id", state.sale1);
     expect(tamper.error).not.toBeNull();
 
-    const { data, error } = await state.ownerA.db.from("sales").update({ status: "cancelled" }).eq("id", state.sale1).select().single();
+    const noReason = await state.ownerA.db.from("sales").update({ status: "cancelled" }).eq("id", state.sale1);
+    expect(noReason.error?.message).toMatch(/cancel reason is required/i);
+    expect(await stockOf(state.variantA)).toBe(8);
+
+    const { data, error } = await state.ownerA.db
+      .from("sales")
+      .update({ status: "cancelled", cancel_reason: "Cliente desistiu" })
+      .eq("id", state.sale1)
+      .select()
+      .single();
     expect(error).toBeNull();
     expect(data!.cancelled_by).toBe(state.ownerA.id);
+    expect(data!.cancelled_at).not.toBeNull();
+    expect(data!.cancel_reason).toBe("Cliente desistiu");
     expect(await stockOf(state.variantA)).toBe(10);
 
     const reopen = await state.ownerA.db.from("sales").update({ status: "completed" }).eq("id", state.sale1);
@@ -455,5 +469,123 @@ describe("caixa, vendas e estoque", () => {
       p_items: [{ variant_id: state.variantA, quantity: 1 }],
     });
     expect(late.error).not.toBeNull();
+  });
+});
+
+describe("gerente (manager)", () => {
+  it("perfil nasce como manager da loja certa (sync de claims)", async () => {
+    const { data } = await state.managerA.db.from("profiles").select("role, store_id").eq("id", state.managerA.id).single();
+    expect(data).toMatchObject({ role: "manager", store_id: state.storeA });
+  });
+
+  it("vê vendas e produtos da loja, mas não de outra loja", async () => {
+    const sales = await state.managerA.db.from("sales").select("id").eq("id", state.sale2);
+    expect(sales.data).toHaveLength(1);
+    const products = await state.managerA.db.from("products").select("id");
+    expect(products.data?.map((p) => p.id)).toEqual([state.productA]);
+    const other = await state.managerA.db.from("sales").select("id").eq("store_id", state.storeB);
+    expect(other.data).toHaveLength(0);
+  });
+
+  it("NÃO vê nem grava preço de custo", async () => {
+    const { data } = await state.managerA.db.from("product_costs").select("*");
+    expect(data).toHaveLength(0);
+    const write = await state.managerA.db
+      .from("product_costs")
+      .upsert({ product_id: state.productA, store_id: state.storeA, cost_price: 1 });
+    expect(write.error?.code).toBe("42501");
+    const { data: cost } = await admin.from("product_costs").select("cost_price").eq("product_id", state.productA).single();
+    expect(Number(cost!.cost_price)).toBe(20);
+  });
+
+  it("edita catálogo e estoque da própria loja, mas não de outra", async () => {
+    const upd = await state.managerA.db.from("product_variants").update({ min_stock: 3 }).eq("id", state.variantA).select();
+    expect(upd.data).toHaveLength(1);
+    const foreign = await state.managerA.db.from("products").insert({ store_id: state.storeB, name: "x", base_price: 1 });
+    expect(foreign.error?.code).toBe("42501");
+    const created = await state.managerA.db.from("products").insert({ store_id: state.storeA, name: "Gerente", base_price: 10 }).select("id").single();
+    expect(created.error).toBeNull();
+  });
+
+  it("não altera dados da loja nem o próprio papel", async () => {
+    const store = await state.managerA.db.from("stores").update({ phone: "1" }).eq("id", state.storeA).select();
+    expect(store.data).toHaveLength(0);
+    const role = await state.managerA.db.from("profiles").update({ role: "owner" }).eq("id", state.managerA.id);
+    expect(role.error?.code).toBe("42501");
+  });
+
+  it("administra vendedores, mas não o dono; o dono administra o gerente", async () => {
+    const seller = await state.managerA.db.from("profiles").update({ is_active: false }).eq("id", state.sellerA2.id).select();
+    expect(seller.data).toHaveLength(1);
+    await admin.from("profiles").update({ is_active: true }).eq("id", state.sellerA2.id);
+
+    const owner = await state.managerA.db.from("profiles").update({ is_active: false }).eq("id", state.ownerA.id).select();
+    expect(owner.data).toHaveLength(0);
+
+    const byOwner = await state.ownerA.db.from("profiles").update({ is_active: false }).eq("id", state.managerA.id).select();
+    expect(byOwner.data).toHaveLength(1);
+    await admin.from("profiles").update({ is_active: true }).eq("id", state.managerA.id);
+  });
+
+  it("vende no próprio caixa e cancela com auditoria (quem, quando, motivo)", async () => {
+    const reg = await state.managerA.db
+      .from("cash_registers")
+      .insert({ store_id: state.storeA, opened_by: state.managerA.id, opening_amount: 0 })
+      .select("id")
+      .single();
+    expect(reg.error).toBeNull();
+
+    const sale = await state.managerA.db.rpc("create_sale", {
+      p_cash_register_id: reg.data!.id,
+      p_payment_method: "pix",
+      p_items: [{ variant_id: state.variantA, quantity: 1 }],
+    });
+    expect(sale.error).toBeNull();
+    state.managerSale = sale.data as string;
+    const before = await stockOf(state.variantA);
+
+    // Sem motivo: recusado, estoque intacto.
+    const noReason = await state.managerA.db.from("sales").update({ status: "cancelled" }).eq("id", state.managerSale);
+    expect(noReason.error?.message).toMatch(/cancel reason is required/i);
+    const blank = await state.managerA.db.from("sales").update({ status: "cancelled", cancel_reason: "   " }).eq("id", state.managerSale);
+    expect(blank.error).not.toBeNull();
+    expect(await stockOf(state.variantA)).toBe(before);
+
+    // Cliente não consegue forjar a auditoria numa venda ativa.
+    const forged = await state.managerA.db
+      .from("sales")
+      .update({ cancelled_by: state.ownerA.id, cancel_reason: "forjado" })
+      .eq("id", state.managerSale);
+    expect(forged.error?.code).toBe("42501");
+
+    // Com motivo: cancela; o banco carimba quem e quando (ignora o que o cliente mandar).
+    const spoofedAt = "2000-01-01T00:00:00Z";
+    const ok = await state.managerA.db
+      .from("sales")
+      .update({ status: "cancelled", cancel_reason: "  Troca de tamanho  ", cancelled_by: state.ownerA.id, cancelled_at: spoofedAt })
+      .eq("id", state.managerSale)
+      .select()
+      .single();
+    expect(ok.error).toBeNull();
+    expect(ok.data!.cancelled_by).toBe(state.managerA.id);
+    expect(ok.data!.cancel_reason).toBe("Troca de tamanho");
+    expect(new Date(ok.data!.cancelled_at).getFullYear()).toBeGreaterThan(2020);
+    expect(await stockOf(state.variantA)).toBe(before + 1);
+  });
+
+  it("venda cancelada é imutável para todos, inclusive dono e gerente", async () => {
+    for (const actor of [state.managerA, state.ownerA]) {
+      const edit = await actor.db.from("sales").update({ cancel_reason: "adulterado" }).eq("id", state.managerSale);
+      expect(edit.error?.code).toBe("42501");
+      const reopen = await actor.db.from("sales").update({ status: "completed" }).eq("id", state.managerSale);
+      expect(reopen.error?.code).toBe("42501");
+    }
+    const { data } = await admin.from("sales").select("cancel_reason, cancelled_by").eq("id", state.managerSale).single();
+    expect(data).toMatchObject({ cancel_reason: "Troca de tamanho", cancelled_by: state.managerA.id });
+  });
+
+  it("vendedor continua sem poder cancelar", async () => {
+    const { data } = await state.sellerA.db.from("sales").update({ status: "cancelled", cancel_reason: "x y z" }).eq("id", state.sale2).select();
+    expect(data).toHaveLength(0);
   });
 });

@@ -38,6 +38,6 @@ export interface SaleRepository {
   create(input: CreateSaleInput): Promise<Sale>;
   findById(id: string): Promise<Sale | null>;
   list(query?: SaleQuery): Promise<Sale[]>;
-  /** Somente owner (RLS). Estorna o estoque no banco. */
-  cancel(id: string): Promise<Sale>;
+  /** Owner/gerente (RLS). Motivo obrigatório; o banco registra quem e quando e estorna o estoque. */
+  cancel(id: string, reason: string): Promise<Sale>;
 }

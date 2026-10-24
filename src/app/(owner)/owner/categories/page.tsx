@@ -8,7 +8,7 @@ export default async function CategoriesPage({
 }: {
   searchParams: Promise<{ error?: string; ok?: string }>;
 }) {
-  const [{ error, ok }, { container }] = await Promise.all([searchParams, requireUser("owner")]);
+  const [{ error, ok }, { container }] = await Promise.all([searchParams, requireUser("owner", "manager")]);
   const categories = await container.repositories.categories.list();
 
   return (

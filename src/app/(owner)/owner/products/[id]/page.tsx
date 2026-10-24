@@ -17,10 +17,12 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; ok?: string }>;
 }) {
-  const [{ id }, { error, ok }, { container }] = await Promise.all([params, searchParams, requireUser("owner")]);
+  const [{ id }, { error, ok }, { container, user }] = await Promise.all([params, searchParams, requireUser("owner", "manager")]);
   const product = await container.repositories.products.findById(id).catch(() => null);
   if (!product) notFound();
-  const cost = await container.repositories.products.getCost(id);
+  // Custo e margem são exclusivos do dono (RLS em product_costs).
+  const canSeeCost = user.role === "owner";
+  const cost = canSeeCost ? await container.repositories.products.getCost(id) : null;
 
   return (
     <div className="max-w-3xl">
@@ -36,8 +38,10 @@ export default async function ProductDetailPage({
         <input name="name" required defaultValue={product.name} className={`${inputClass} col-span-2`} />
         <input name="brand" defaultValue={product.brand ?? ""} placeholder="Marca" className={inputClass} />
         <input name="basePrice" required inputMode="decimal" defaultValue={product.basePrice.toDecimal().toFixed(2)} className={inputClass} />
-        <input name="costPrice" inputMode="decimal" placeholder="Custo (R$)"
-          defaultValue={cost ? cost.costPrice.toDecimal().toFixed(2) : ""} className={inputClass} />
+        {canSeeCost && (
+          <input name="costPrice" inputMode="decimal" placeholder="Custo (R$)"
+            defaultValue={cost ? cost.costPrice.toDecimal().toFixed(2) : ""} className={inputClass} />
+        )}
         <button type="submit" className={buttonClass}>Salvar</button>
       </form>
       <form action={setProductActiveAction} className="mb-8">

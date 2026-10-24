@@ -7,6 +7,7 @@ import { GetOwnerDashboard } from "@/core/application/use-cases/reports/get-owne
 import { CancelSale } from "@/core/application/use-cases/sales/cancel-sale";
 import { RegisterSale } from "@/core/application/use-cases/sales/register-sale";
 import { CreateStoreWithOwner } from "@/core/application/use-cases/stores/create-store-with-owner";
+import { CreateManager } from "@/core/application/use-cases/users/create-manager";
 import { CreateSeller } from "@/core/application/use-cases/users/create-seller";
 import { SupabaseUserProvisioner } from "@/infra/services/auth-admin/supabase-user-provisioner";
 import { SupabaseCashRegisterRepository } from "@/infra/supabase/repositories/supabase-cash-register-repository";
@@ -44,6 +45,7 @@ export function buildContainer(db: SupabaseClient, adminFactory: () => SupabaseC
       closeCashRegister: new CloseCashRegister(cashRegisters),
       getOwnerDashboard: new GetOwnerDashboard(sales, products, profiles),
       createSeller: new CreateSeller(provisioner),
+      createManager: new CreateManager(provisioner),
       createStoreWithOwner: new CreateStoreWithOwner(stores, provisioner),
     },
   };

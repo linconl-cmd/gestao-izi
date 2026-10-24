@@ -7,6 +7,7 @@ export function homeFor(role: UserRole): string {
     case "master":
       return "/master/stores";
     case "owner":
+    case "manager":
       return "/owner";
     case "seller":
       return "/pos";
@@ -16,8 +17,8 @@ export function homeFor(role: UserRole): string {
 /** Prefixo de rota -> papéis que podem acessar. */
 const GUARDS: ReadonlyArray<readonly [string, readonly UserRole[]]> = [
   ["/master", ["master"]],
-  ["/owner", ["owner"]],
-  ["/pos", ["owner", "seller"]],
+  ["/owner", ["owner", "manager"]],
+  ["/pos", ["owner", "manager", "seller"]],
 ];
 
 export function isAllowed(pathname: string, role: UserRole): boolean {

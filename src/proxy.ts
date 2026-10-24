@@ -30,7 +30,13 @@ export async function proxy(request: NextRequest) {
     return res;
   };
 
-  if (pathname === LOGIN_PATH) return role ? redirect(homeFor(role)) : response;
+  if (pathname === LOGIN_PATH) {
+    if (!role) return response;
+    // O JWT pode estar válido mesmo com o usuário removido/revogado (getClaims não consulta o Auth).
+    // Sem esta checagem, página -> /login -> página vira um laço infinito de redirecionamentos.
+    const { data: live } = await supabase.auth.getUser();
+    return live.user ? redirect(homeFor(role)) : response;
+  }
   if (!role) return redirect(LOGIN_PATH);
   if (!isAllowed(pathname, role)) return redirect(homeFor(role));
   return response;

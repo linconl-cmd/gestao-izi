@@ -11,7 +11,7 @@ export class CreateProduct {
   constructor(private readonly products: ProductRepository) {}
 
   async execute(actor: AuthUser, input: Omit<NewProductInput, "storeId">): Promise<Product> {
-    assertRole(actor, "owner");
+    assertRole(actor, "owner", "manager");
     if (input.basePrice.isNegative()) throw new ValidationError("Price cannot be negative");
     if (input.variants.length === 0) throw new ValidationError("Product needs at least one variant");
 
@@ -21,6 +21,8 @@ export class CreateProduct {
       skus.add(v.sku);
       if ((v.stockQuantity ?? 0) < 0) throw new ValidationError("Stock cannot be negative");
     }
-    return this.products.create({ ...input, storeId: requireStoreId(actor) });
+    // Custo é restrito ao dono (RLS em product_costs): gerente cadastra o produto sem ele.
+    const costPrice = actor.role === "owner" ? input.costPrice : null;
+    return this.products.create({ ...input, costPrice, storeId: requireStoreId(actor) });
   }
 }

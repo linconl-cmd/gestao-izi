@@ -13,6 +13,8 @@ Opção A, pelo painel: **SQL Editor → New query**, cole o arquivo e clique em
 
 1. `supabase/migrations/20261023000000_init_schema.sql`
 2. `supabase/migrations/20261023010000_sync_app_metadata_to_profiles.sql`
+3. `supabase/migrations/20261024000000_add_manager_role.sql`: **rode sozinha, numa execução à parte**
+4. `supabase/migrations/20261024010000_manager_policies.sql`: só depois da 3 (o Postgres não deixa usar o novo valor do enum na mesma transação em que ele nasce)
 
 Opção B, pela CLI (recomendada para novos ambientes, pois registra o histórico):
 
