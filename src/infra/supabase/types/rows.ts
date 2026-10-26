@@ -106,6 +106,7 @@ export interface SaleRow {
   id: string;
   store_id: string;
   seller_id: string;
+  received_by: string | null;
   cash_register_id: string;
   customer_id: string | null;
   payment_method: PaymentMethod;
@@ -119,4 +120,37 @@ export interface SaleRow {
   cancelled_by: string | null;
   cancel_reason: string | null;
   sale_items?: SaleItemRow[];
+}
+
+export interface OrderItemRow {
+  variant_id: string;
+  quantity: number;
+  product_variants: (VariantRow & { products: { name: string; base_price: number } | null }) | null;
+}
+
+export interface OrderRow {
+  id: string;
+  store_id: string;
+  number: number;
+  seller_id: string;
+  status: "open" | "paid" | "cancelled" | "expired";
+  suggested_discount: number;
+  notes: string | null;
+  business_date: string;
+  sale_id: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+  closed_at: string | null;
+  closed_by: string | null;
+  order_items?: OrderItemRow[];
+}
+
+export interface NotificationRow {
+  id: string;
+  store_id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  created_at: string;
+  read_at: string | null;
 }

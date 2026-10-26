@@ -9,7 +9,7 @@ export class OpenCashRegister {
   constructor(private readonly registers: CashRegisterRepository) {}
 
   async execute(actor: AuthUser, openingAmount: Money): Promise<CashRegister> {
-    assertRole(actor, "owner", "manager", "seller");
+    assertRole(actor, "owner", "manager");
     if (openingAmount.isNegative()) throw new ValidationError("Opening amount cannot be negative");
     if (await this.registers.findOpenByUser(actor.id)) {
       throw new ConflictError("There is already an open cash register");

@@ -5,7 +5,8 @@ import { ForbiddenError, ValidationError } from "@/core/domain/errors/domain-err
 import type { SaleRepository } from "@/core/domain/repositories/sale-repository";
 import { Money } from "@/core/domain/value-objects/money";
 
-const seller: AuthUser = { id: "u1", role: "seller", storeId: "s1", email: null };
+const cashier: AuthUser = { id: "u1", role: "manager", storeId: "s1", email: null };
+const seller: AuthUser = { id: "u2", role: "seller", storeId: "s1", email: null };
 
 function setup() {
   const create = vi.fn().mockResolvedValue({ id: "sale-1" });
@@ -24,7 +25,7 @@ describe("RegisterSale", () => {
 
   it("merges repeated variants", async () => {
     const { create, useCase } = setup();
-    await useCase.execute(seller, {
+    await useCase.execute(cashier, {
       ...base,
       items: [
         { variantId: "v1", quantity: 1 },
@@ -36,10 +37,17 @@ describe("RegisterSale", () => {
 
   it("rejects empty sales and invalid quantities", async () => {
     const { useCase } = setup();
-    await expect(useCase.execute(seller, { ...base, items: [] })).rejects.toBeInstanceOf(ValidationError);
+    await expect(useCase.execute(cashier, { ...base, items: [] })).rejects.toBeInstanceOf(ValidationError);
     await expect(
-      useCase.execute(seller, { ...base, items: [{ variantId: "v1", quantity: 0 }] }),
+      useCase.execute(cashier, { ...base, items: [{ variantId: "v1", quantity: 0 }] }),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("vendedor não fecha venda: envia comanda ao caixa", async () => {
+    const { useCase } = setup();
+    await expect(
+      useCase.execute(seller, { ...base, items: [{ variantId: "v1", quantity: 1 }] }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
   it("forbids master from selling", async () => {

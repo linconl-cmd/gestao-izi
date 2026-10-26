@@ -39,6 +39,7 @@ const state = {
   ownerB: {} as Actor,
   managerA: {} as Actor,
   managerSale: "",
+  managerRegister: "",
   productA: "",
   variantA: "",
   productB: "",
@@ -96,6 +97,9 @@ async function purge(storeIds: string[], userIds: string[]): Promise<void> {
     if (error) console.warn(`[cleanup] ${label}: ${error.message}`);
   };
   if (storeIds.length > 0) {
+    await step("order_items", () => admin.from("order_items").delete().in("store_id", storeIds));
+    await step("orders", () => admin.from("orders").delete().in("store_id", storeIds));
+    await step("notifications", () => admin.from("notifications").delete().in("store_id", storeIds));
     await step("sales", () => admin.from("sales").delete().in("store_id", storeIds)); // cascade sale_items
     await step("cash_registers", () => admin.from("cash_registers").delete().in("store_id", storeIds));
   }
@@ -287,9 +291,24 @@ describe("restrições do vendedor", () => {
   });
 });
 
-describe("caixa, vendas e estoque", () => {
+describe("caixa, vendas e estoque (recebimento por dono/gerente)", () => {
+  it("vendedor não fecha venda nem abre caixa: envia comanda ao caixa", async () => {
+    const sale = await state.sellerA.db.rpc("create_sale", {
+      p_cash_register_id: randomUUID(),
+      p_payment_method: "cash",
+      p_items: [{ variant_id: state.variantA, quantity: 1 }],
+    });
+    expect(sale.error?.code).toBe("42501");
+
+    const register = await state.sellerA.db
+      .from("cash_registers")
+      .insert({ store_id: state.storeA, opened_by: state.sellerA.id, opening_amount: 0 });
+    expect(register.error?.code).toBe("42501");
+    expect(await stockOf(state.variantA)).toBe(10);
+  });
+
   it("não vende sem caixa aberto", async () => {
-    const { error } = await state.sellerA.db.rpc("create_sale", {
+    const { error } = await state.managerA.db.rpc("create_sale", {
       p_cash_register_id: randomUUID(),
       p_payment_method: "cash",
       p_items: [{ variant_id: state.variantA, quantity: 1 }],
@@ -299,27 +318,27 @@ describe("caixa, vendas e estoque", () => {
   });
 
   it("abre caixa; segundo caixa aberto é recusado; não abre caixa em nome de outro", async () => {
-    const { data, error } = await state.sellerA.db
+    const { data, error } = await state.managerA.db
       .from("cash_registers")
-      .insert({ store_id: state.storeA, opened_by: state.sellerA.id, opening_amount: 20 })
+      .insert({ store_id: state.storeA, opened_by: state.managerA.id, opening_amount: 20 })
       .select("id")
       .single();
     expect(error).toBeNull();
     state.registerA = data!.id;
 
-    const dup = await state.sellerA.db
+    const dup = await state.managerA.db
       .from("cash_registers")
-      .insert({ store_id: state.storeA, opened_by: state.sellerA.id, opening_amount: 0 });
+      .insert({ store_id: state.storeA, opened_by: state.managerA.id, opening_amount: 0 });
     expect(dup.error?.code).toBe("23505");
 
-    const spoof = await state.sellerA.db
+    const spoof = await state.managerA.db
       .from("cash_registers")
-      .insert({ store_id: state.storeA, opened_by: state.sellerA2.id, opening_amount: 0 });
+      .insert({ store_id: state.storeA, opened_by: state.ownerA.id, opening_amount: 0 });
     expect(spoof.error?.code).toBe("42501");
   });
 
-  it("outro vendedor não usa o caixa alheio", async () => {
-    const { error } = await state.sellerA2.db.rpc("create_sale", {
+  it("outro usuário não usa o caixa alheio", async () => {
+    const { error } = await state.ownerA.db.rpc("create_sale", {
       p_cash_register_id: state.registerA,
       p_payment_method: "cash",
       p_items: [{ variant_id: state.variantA, quantity: 1 }],
@@ -329,7 +348,7 @@ describe("caixa, vendas e estoque", () => {
   });
 
   it("create_sale: preço vem do catálogo, total calculado e estoque baixado", async () => {
-    const { data, error } = await state.sellerA.db.rpc("create_sale", {
+    const { data, error } = await state.managerA.db.rpc("create_sale", {
       p_cash_register_id: state.registerA,
       p_payment_method: "cash",
       p_items: [{ variant_id: state.variantA, quantity: 2, discount: 0 }],
@@ -341,14 +360,15 @@ describe("caixa, vendas e estoque", () => {
     const { data: sale } = await admin.from("sales").select("*, sale_items(*)").eq("id", state.sale1).single();
     expect(Number(sale.subtotal)).toBe(100);
     expect(Number(sale.total)).toBe(90);
-    expect(sale.seller_id).toBe(state.sellerA.id);
+    expect(sale.seller_id).toBe(state.managerA.id);
+    expect(sale.received_by).toBe(state.managerA.id);
     expect(sale.sale_items[0]).toMatchObject({ quantity: 2, product_name: "Camiseta A", variant_label: "M / Azul" });
     expect(Number(sale.sale_items[0].unit_price)).toBe(50);
     expect(await stockOf(state.variantA)).toBe(8);
   });
 
   it("estoque insuficiente aborta a venda inteira", async () => {
-    const { error } = await state.sellerA.db.rpc("create_sale", {
+    const { error } = await state.managerA.db.rpc("create_sale", {
       p_cash_register_id: state.registerA,
       p_payment_method: "pix",
       p_items: [{ variant_id: state.variantA, quantity: 99 }],
@@ -360,7 +380,7 @@ describe("caixa, vendas e estoque", () => {
   });
 
   it("não vende produto de outra loja", async () => {
-    const { error } = await state.sellerA.db.rpc("create_sale", {
+    const { error } = await state.managerA.db.rpc("create_sale", {
       p_cash_register_id: state.registerA,
       p_payment_method: "pix",
       p_items: [{ variant_id: state.variantB, quantity: 1 }],
@@ -370,14 +390,14 @@ describe("caixa, vendas e estoque", () => {
   });
 
   it("não insere itens fora do create_sale nem forja preço", async () => {
-    const forged = await state.sellerA.db
+    const forged = await state.managerA.db
       .from("sale_items")
       .insert({ store_id: state.storeA, sale_id: state.sale1, variant_id: state.variantA, quantity: 1, discount: 0 });
     expect(forged.error).not.toBeNull();
     expect(await stockOf(state.variantA)).toBe(8);
 
-    const direct = await state.sellerA.db.from("sales").insert({
-      store_id: state.storeA, seller_id: state.sellerA.id, cash_register_id: state.registerA,
+    const direct = await state.managerA.db.from("sales").insert({
+      store_id: state.storeA, seller_id: state.managerA.id, cash_register_id: state.registerA,
       payment_method: "cash", total: 1,
     }).select("*").single();
     // Se o insert direto passar, o trigger zera os totais (sem itens, total = 0).
@@ -390,10 +410,10 @@ describe("caixa, vendas e estoque", () => {
   it("visibilidade das vendas", async () => {
     const ids = async (actor: Actor) =>
       ((await actor.db.from("sales").select("id").eq("id", state.sale1)).data ?? []).length;
-    expect(await ids(state.sellerA)).toBe(1);
+    expect(await ids(state.managerA)).toBe(1);
     expect(await ids(state.ownerA)).toBe(1);
     expect(await ids(state.master)).toBe(1);
-    expect(await ids(state.sellerA2)).toBe(0);
+    expect(await ids(state.sellerA)).toBe(0);
     expect(await ids(state.ownerB)).toBe(0);
 
     const items = await state.sellerA2.db.from("sale_items").select("id").eq("sale_id", state.sale1);
@@ -401,7 +421,7 @@ describe("caixa, vendas e estoque", () => {
   });
 
   it("vendedor não cancela, edita nem apaga venda", async () => {
-    const cancel = await state.sellerA.db.from("sales").update({ status: "cancelled" }).eq("id", state.sale1).select();
+    const cancel = await state.sellerA.db.from("sales").update({ status: "cancelled", cancel_reason: "x y z" }).eq("id", state.sale1).select();
     expect(cancel.data).toHaveLength(0);
     // DELETE nem é concedido a authenticated: erro de permissão (ou zero linhas).
     const del = await state.sellerA.db.from("sales").delete().eq("id", state.sale1).select();
@@ -437,12 +457,12 @@ describe("caixa, vendas e estoque", () => {
   });
 
   it("owner de outra loja não cancela venda alheia", async () => {
-    const { data } = await state.ownerB.db.from("sales").update({ status: "cancelled" }).eq("id", state.sale1).select();
+    const { data } = await state.ownerB.db.from("sales").update({ status: "cancelled", cancel_reason: "x y z" }).eq("id", state.sale1).select();
     expect(data).toHaveLength(0);
   });
 
   it("fechamento: esperado = abertura + vendas em dinheiro não canceladas", async () => {
-    const { data, error } = await state.sellerA.db.rpc("create_sale", {
+    const { data, error } = await state.managerA.db.rpc("create_sale", {
       p_cash_register_id: state.registerA,
       p_payment_method: "cash",
       p_items: [{ variant_id: state.variantA, quantity: 1 }],
@@ -450,7 +470,7 @@ describe("caixa, vendas e estoque", () => {
     expect(error).toBeNull();
     state.sale2 = data as string;
 
-    const closed = await state.sellerA.db
+    const closed = await state.managerA.db
       .from("cash_registers")
       .update({ status: "closed", closing_amount: 70 })
       .eq("id", state.registerA)
@@ -458,12 +478,16 @@ describe("caixa, vendas e estoque", () => {
       .single();
     expect(closed.error).toBeNull();
     expect(Number(closed.data!.expected_amount)).toBe(70); // 20 + 50 (a venda de 90 foi cancelada)
-    expect(closed.data!.closed_by).toBe(state.sellerA.id);
+    expect(closed.data!.closed_by).toBe(state.managerA.id);
 
-    const again = await state.sellerA.db.from("cash_registers").update({ closing_amount: 1 }).eq("id", state.registerA).select();
-    expect(again.data).toHaveLength(0);
+    // Caixa fechado é imutável: dono/gerente enxergam a linha, então o trigger recusa (erro);
+    // para quem não pode editá-la, o RLS devolve zero linhas.
+    const again = await state.managerA.db.from("cash_registers").update({ closing_amount: 1 }).eq("id", state.registerA).select();
+    expect(again.error !== null || again.data?.length === 0).toBe(true);
+    const { data: kept } = await admin.from("cash_registers").select("closing_amount").eq("id", state.registerA).single();
+    expect(Number(kept!.closing_amount)).toBe(70);
 
-    const late = await state.sellerA.db.rpc("create_sale", {
+    const late = await state.managerA.db.rpc("create_sale", {
       p_cash_register_id: state.registerA,
       p_payment_method: "cash",
       p_items: [{ variant_id: state.variantA, quantity: 1 }],
@@ -534,6 +558,7 @@ describe("gerente (manager)", () => {
       .select("id")
       .single();
     expect(reg.error).toBeNull();
+    state.managerRegister = reg.data!.id;
 
     const sale = await state.managerA.db.rpc("create_sale", {
       p_cash_register_id: reg.data!.id,
@@ -587,5 +612,273 @@ describe("gerente (manager)", () => {
   it("vendedor continua sem poder cancelar", async () => {
     const { data } = await state.sellerA.db.from("sales").update({ status: "cancelled", cancel_reason: "x y z" }).eq("id", state.sale2).select();
     expect(data).toHaveLength(0);
+  });
+});
+
+describe("comanda (pré-venda): vendedor envia, gerente recebe", () => {
+  const orderIds: Record<string, string> = {};
+  const createOrder = (actor: Actor, items: { variant_id: string; quantity: number }[], discount = 0) =>
+    actor.db.rpc("create_order", { p_items: items, p_suggested_discount: discount });
+  const readOrder = async (id: string) =>
+    (await admin.from("orders").select("*").eq("id", id).single()).data!;
+
+  it("vendedor cria comanda: número sequencial por loja, estoque intacto", async () => {
+    const stock = await stockOf(state.variantA);
+    const a = await createOrder(state.sellerA, [{ variant_id: state.variantA, quantity: 2 }], 5);
+    expect(a.error).toBeNull();
+    orderIds.a = a.data as string;
+    const b = await createOrder(state.sellerA2, [{ variant_id: state.variantA, quantity: 1 }]);
+    expect(b.error).toBeNull();
+    orderIds.b = b.data as string;
+
+    const [oa, ob] = [await readOrder(orderIds.a!), await readOrder(orderIds.b!)];
+    expect(oa).toMatchObject({ status: "open", seller_id: state.sellerA.id, store_id: state.storeA });
+    expect(Number(oa.suggested_discount)).toBe(5);
+    expect(ob.number).toBe(oa.number + 1);
+    expect(await stockOf(state.variantA)).toBe(stock); // comanda não baixa estoque
+
+    const other = await createOrder(state.ownerB, [{ variant_id: state.variantB, quantity: 1 }]);
+    expect(other.error).toBeNull();
+    expect((await readOrder(other.data as string)).number).toBe(1); // numeração é por loja
+  });
+
+  it("não cria comanda com produto de outra loja ou inativo", async () => {
+    const foreign = await createOrder(state.sellerA, [{ variant_id: state.variantB, quantity: 1 }]);
+    expect(foreign.error).not.toBeNull();
+
+    await admin.from("product_variants").update({ is_active: false }).eq("id", state.variantA);
+    const inactive = await createOrder(state.sellerA, [{ variant_id: state.variantA, quantity: 1 }]);
+    expect(inactive.error?.message).toMatch(/inactive|not found/i);
+    await admin.from("product_variants").update({ is_active: true }).eq("id", state.variantA);
+  });
+
+  it("visibilidade: vendedor vê só as suas; gerente/dono/master veem todas; outra loja não", async () => {
+    const seen = async (actor: Actor) =>
+      ((await actor.db.from("orders").select("id").in("id", [orderIds.a!, orderIds.b!])).data ?? []).map((o) => o.id).sort();
+    expect(await seen(state.sellerA)).toEqual([orderIds.a]);
+    expect(await seen(state.sellerA2)).toEqual([orderIds.b]);
+    expect(await seen(state.managerA)).toEqual([orderIds.a, orderIds.b].sort());
+    expect(await seen(state.ownerA)).toHaveLength(2);
+    expect(await seen(state.master)).toHaveLength(2);
+    expect(await seen(state.ownerB)).toEqual([]);
+
+    const items = await state.sellerA2.db.from("order_items").select("id").eq("order_id", orderIds.a!);
+    expect(items.data).toHaveLength(0);
+  });
+
+  it("cliente não forja número, status nem dia; não altera nem apaga comanda", async () => {
+    const forged = await state.sellerA.db
+      .from("orders")
+      .insert({ store_id: state.storeA, seller_id: state.sellerA.id, number: 999, status: "paid", business_date: "2000-01-01" })
+      .select("*")
+      .single();
+    expect(forged.error).toBeNull();
+    expect(forged.data).toMatchObject({ status: "open" });
+    expect(forged.data!.number).not.toBe(999);
+    expect(forged.data!.business_date).not.toBe("2000-01-01");
+    await admin.from("orders").delete().eq("id", forged.data!.id);
+
+    const update = await state.sellerA.db.from("orders").update({ status: "paid" }).eq("id", orderIds.a!);
+    expect(update.error).not.toBeNull();
+    const del = await state.sellerA.db.from("orders").delete().eq("id", orderIds.a!);
+    expect(del.error).not.toBeNull();
+    expect((await readOrder(orderIds.a!)).status).toBe("open");
+  });
+
+  it("vendedor edita itens da própria comanda, não da alheia", async () => {
+    const mine = await state.sellerA.db.rpc("set_order_item", { p_order_id: orderIds.a, p_variant_id: state.variantA, p_quantity: 3 });
+    expect(mine.error).toBeNull();
+    const { data } = await admin.from("order_items").select("quantity").eq("order_id", orderIds.a!).single();
+    expect(data!.quantity).toBe(3);
+
+    const theirs = await state.sellerA2.db.rpc("set_order_item", { p_order_id: orderIds.a, p_variant_id: state.variantA, p_quantity: 9 });
+    expect(theirs.error).not.toBeNull();
+    const { data: still } = await admin.from("order_items").select("quantity").eq("order_id", orderIds.a!).single();
+    expect(still!.quantity).toBe(3);
+  });
+
+  it("vendedor não recebe pagamento; dono sem caixa próprio também não", async () => {
+    const seller = await state.sellerA.db.rpc("pay_order", {
+      p_order_id: orderIds.a, p_cash_register_id: state.managerRegister, p_payment_method: "pix",
+    });
+    expect(seller.error?.code).toBe("42501");
+
+    // O caixa informado precisa ser de quem recebe (ownerA usando o caixa do gerente).
+    const owner = await state.ownerA.db.rpc("pay_order", {
+      p_order_id: orderIds.a, p_cash_register_id: state.managerRegister, p_payment_method: "pix",
+    });
+    expect(owner.error).not.toBeNull();
+    expect((await readOrder(orderIds.a!)).status).toBe("open");
+  });
+
+  it("gerente recebe: desconto aplicado por ele, venda no nome do vendedor, estoque baixa", async () => {
+    const before = await stockOf(state.variantA);
+    const { data, error } = await state.managerA.db.rpc("pay_order", {
+      p_order_id: orderIds.a, p_cash_register_id: state.managerRegister, p_payment_method: "pix", p_discount: 7,
+    });
+    expect(error).toBeNull();
+
+    const { data: sale } = await admin.from("sales").select("*").eq("id", data as string).single();
+    expect(sale).toMatchObject({ seller_id: state.sellerA.id, received_by: state.managerA.id, payment_method: "pix" });
+    expect(Number(sale!.subtotal)).toBe(150); // 3 × R$ 50 (preço do catálogo)
+    expect(Number(sale!.discount)).toBe(7); // o do gerente, não a sugestão de 5
+    expect(Number(sale!.total)).toBe(143);
+    expect(await stockOf(state.variantA)).toBe(before - 3);
+
+    const order = await readOrder(orderIds.a!);
+    expect(order).toMatchObject({ status: "paid", sale_id: data, closed_by: state.managerA.id });
+
+    // O vendedor enxerga a venda dele (comissão), mas não o caixa.
+    const mine = await state.sellerA.db.from("sales").select("id").eq("id", data as string);
+    expect(mine.data).toHaveLength(1);
+    const reg = await state.sellerA.db.from("cash_registers").select("id").eq("id", state.managerRegister);
+    expect(reg.data).toHaveLength(0);
+  });
+
+  it("sem desconto informado usa a sugestão do vendedor; pagar de novo é recusado", async () => {
+    const c = await createOrder(state.sellerA, [{ variant_id: state.variantA, quantity: 1 }], 5);
+    const paid = await state.managerA.db.rpc("pay_order", {
+      p_order_id: c.data, p_cash_register_id: state.managerRegister, p_payment_method: "cash",
+    });
+    expect(paid.error).toBeNull();
+    const { data: sale } = await admin.from("sales").select("discount, total").eq("id", paid.data as string).single();
+    expect(Number(sale!.discount)).toBe(5);
+    expect(Number(sale!.total)).toBe(45);
+
+    const again = await state.managerA.db.rpc("pay_order", {
+      p_order_id: c.data, p_cash_register_id: state.managerRegister, p_payment_method: "cash",
+    });
+    expect(again.error?.message).toMatch(/not open/i);
+  });
+
+  it("comanda recebida não aceita mais edição de itens", async () => {
+    const edit = await state.sellerA.db.rpc("set_order_item", { p_order_id: orderIds.a, p_variant_id: state.variantA, p_quantity: 1 });
+    expect(edit.error?.message).toMatch(/not open/i);
+    const manager = await state.managerA.db.rpc("set_order_item", { p_order_id: orderIds.a, p_variant_id: state.variantA, p_quantity: 1 });
+    expect(manager.error).not.toBeNull();
+  });
+
+  it("estoque insuficiente no recebimento: venda não nasce e a comanda segue aberta", async () => {
+    const big = await createOrder(state.sellerA, [{ variant_id: state.variantA, quantity: 500 }]);
+    expect(big.error).toBeNull();
+    const before = await stockOf(state.variantA);
+    const { count: salesBefore } = await admin.from("sales").select("id", { count: "exact", head: true }).eq("store_id", state.storeA);
+
+    const pay = await state.managerA.db.rpc("pay_order", {
+      p_order_id: big.data, p_cash_register_id: state.managerRegister, p_payment_method: "pix",
+    });
+    expect(pay.error?.message).toMatch(/insufficient stock/i);
+    expect(await stockOf(state.variantA)).toBe(before);
+    const { count: salesAfter } = await admin.from("sales").select("id", { count: "exact", head: true }).eq("store_id", state.storeA);
+    expect(salesAfter).toBe(salesBefore);
+    expect((await readOrder(big.data as string)).status).toBe("open");
+
+    // Gerente ajusta a quantidade e recebe.
+    const fix = await state.managerA.db.rpc("set_order_item", { p_order_id: big.data, p_variant_id: state.variantA, p_quantity: 1 });
+    expect(fix.error).toBeNull();
+    const ok = await state.managerA.db.rpc("pay_order", {
+      p_order_id: big.data, p_cash_register_id: state.managerRegister, p_payment_method: "pix",
+    });
+    expect(ok.error).toBeNull();
+  });
+
+  it("cancelamento: vendedor só a própria; gerente qualquer; outra loja não; cancelada não é paga", async () => {
+    const mine = await createOrder(state.sellerA, [{ variant_id: state.variantA, quantity: 1 }]);
+    const theirs = await createOrder(state.sellerA2, [{ variant_id: state.variantA, quantity: 1 }]);
+
+    const foreign = await state.sellerA.db.rpc("cancel_order", { p_order_id: theirs.data, p_reason: "x" });
+    expect(foreign.error?.code).toBe("42501");
+    const otherStore = await state.ownerB.db.rpc("cancel_order", { p_order_id: theirs.data, p_reason: "x" });
+    expect(otherStore.error).not.toBeNull();
+
+    const own = await state.sellerA.db.rpc("cancel_order", { p_order_id: mine.data, p_reason: "cliente saiu" });
+    expect(own.error).toBeNull();
+    expect(await readOrder(mine.data as string)).toMatchObject({
+      status: "cancelled", cancel_reason: "cliente saiu", closed_by: state.sellerA.id,
+    });
+
+    const byManager = await state.managerA.db.rpc("cancel_order", { p_order_id: theirs.data });
+    expect(byManager.error).toBeNull();
+    expect(await readOrder(theirs.data as string)).toMatchObject({ status: "cancelled", closed_by: state.managerA.id });
+
+    const pay = await state.managerA.db.rpc("pay_order", {
+      p_order_id: mine.data, p_cash_register_id: state.managerRegister, p_payment_method: "pix",
+    });
+    expect(pay.error?.message).toMatch(/not open/i);
+
+    const otherPay = await state.ownerB.db.rpc("pay_order", {
+      p_order_id: orderIds.b, p_cash_register_id: state.managerRegister, p_payment_method: "pix",
+    });
+    expect(otherPay.error).not.toBeNull();
+  });
+
+  it("expira no fim do dia, avisa o gerente e só dono/gerente disparam", async () => {
+    const old = await createOrder(state.sellerA, [{ variant_id: state.variantA, quantity: 1 }]);
+    const fresh = await createOrder(state.sellerA2, [{ variant_id: state.variantA, quantity: 1 }]);
+    await admin.from("orders").update({ business_date: "2020-01-01" }).eq("id", old.data as string);
+
+    const denied = await state.sellerA.db.rpc("expire_stale_orders");
+    expect(denied.error?.code).toBe("42501");
+
+    const expired = await state.managerA.db.rpc("expire_stale_orders");
+    expect(expired.error).toBeNull();
+    expect(expired.data).toBeGreaterThanOrEqual(1);
+    expect((await readOrder(old.data as string)).status).toBe("expired");
+    expect((await readOrder(fresh.data as string)).status).toBe("open"); // de hoje: segue aberta
+
+    const alerts = await state.managerA.db.from("notifications").select("*").eq("kind", "orders_expired");
+    expect(alerts.data?.length).toBeGreaterThanOrEqual(1);
+    expect(alerts.data![0]!.title).toMatch(/expirada/i);
+
+    const second = await state.managerA.db.rpc("expire_stale_orders");
+    expect(second.data).toBe(0); // idempotente
+  });
+
+  it("alertas: só dono/gerente da loja leem; leitura é carimbada pelo banco", async () => {
+    expect(((await state.sellerA.db.from("notifications").select("id")).data ?? [])).toHaveLength(0);
+    expect(((await state.ownerB.db.from("notifications").select("id")).data ?? [])).toHaveLength(0);
+
+    const { data: unread } = await state.managerA.db.from("notifications").select("id").is("read_at", null).limit(1);
+    const id = unread![0]!.id;
+
+    const sellerRead = await state.sellerA.db.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).select();
+    expect(sellerRead.data ?? []).toHaveLength(0);
+
+    const forged = await state.managerA.db
+      .from("notifications")
+      .update({ read_at: "2000-01-01T00:00:00Z", read_by: state.ownerA.id })
+      .eq("id", id);
+    expect(forged.error).not.toBeNull(); // read_by não é gravável pelo cliente
+
+    const ok = await state.managerA.db.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).select().single();
+    expect(ok.error).toBeNull();
+    expect(ok.data!.read_by).toBe(state.managerA.id);
+    expect(new Date(ok.data!.read_at).getFullYear()).toBeGreaterThan(2020);
+  });
+
+  it("fechar o caixa com comandas pendentes gera alerta para o gerente", async () => {
+    const pending = await createOrder(state.sellerA, [{ variant_id: state.variantA, quantity: 1 }]);
+    const orderNumber = (await readOrder(pending.data as string)).number;
+
+    const closed = await state.managerA.db
+      .from("cash_registers")
+      .update({ status: "closed", closing_amount: 0 })
+      .eq("id", state.managerRegister)
+      .select()
+      .single();
+    expect(closed.error).toBeNull();
+
+    const alerts = await state.ownerA.db.from("notifications").select("*").eq("kind", "register_closed_open_orders");
+    expect(alerts.data?.length).toBeGreaterThanOrEqual(1);
+    const latest = alerts.data!.sort((a, b) => b.created_at.localeCompare(a.created_at))[0]!;
+    expect(latest.title).toMatch(/pendente/i);
+    expect(latest.body).toContain(`#${orderNumber}`);
+    expect(latest.body).toContain("RLS seller-a");
+
+    // Sem caixa aberto não há como receber.
+    const pay = await state.managerA.db.rpc("pay_order", {
+      p_order_id: pending.data, p_cash_register_id: state.managerRegister, p_payment_method: "pix",
+    });
+    expect(pay.error).not.toBeNull();
   });
 });

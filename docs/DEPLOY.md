@@ -15,6 +15,10 @@ Opção A, pelo painel: **SQL Editor → New query**, cole o arquivo e clique em
 2. `supabase/migrations/20261023010000_sync_app_metadata_to_profiles.sql`
 3. `supabase/migrations/20261024000000_add_manager_role.sql`: **rode sozinha, numa execução à parte**
 4. `supabase/migrations/20261024010000_manager_policies.sql`: só depois da 3 (o Postgres não deixa usar o novo valor do enum na mesma transação em que ele nasce)
+5. `supabase/migrations/20261025000000_orders_presale.sql`: comandas (pré-venda), notificações e a regra de que só dono/gerente fecham venda
+6. `supabase/migrations/20261025010000_fix_order_items_cascade.sql`: correção da exclusão em cascata de comandas (permite apagar lojas/comandas)
+
+> **Expiração automática (opcional):** as comandas abertas expiram no fim do dia (Brasília). Sem configurar nada, o sistema expira de forma preguiçosa quando dono/gerente abrem o app. Para expirar à meia-noite mesmo sem ninguém logado, habilite *Database → Extensions → pg_cron* e rode uma vez: `select cron.schedule('expire-open-orders', '5 3 * * *', $$ select private.expire_all_stale_orders() $$);`
 
 Opção B, pela CLI (recomendada para novos ambientes, pois registra o histórico):
 

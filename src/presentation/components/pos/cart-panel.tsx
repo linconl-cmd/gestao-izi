@@ -20,6 +20,8 @@ const PAYMENT_ICONS: Record<PaymentMethod, LucideIcon> = {
 };
 
 export interface CartPanelProps {
+  /** "order" = pré-venda do vendedor (sugere desconto, envia ao caixa); "sale" = recebimento direto. */
+  mode?: "sale" | "order";
   lines: CartLine[];
   subtotalCents: number;
   discount: string;
@@ -36,6 +38,7 @@ export interface CartPanelProps {
 }
 
 export function CartPanel(p: CartPanelProps) {
+  const isOrder = p.mode === "order";
   const total = p.subtotalCents - p.discountCents;
   const count = p.lines.reduce((s, l) => s + l.quantity, 0);
 
@@ -107,6 +110,7 @@ export function CartPanel(p: CartPanelProps) {
       </div>
 
       <div className="space-y-4 border-t px-5 pt-4 pb-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        {!isOrder && (
         <fieldset>
           <legend className="mb-2 text-xs font-medium text-muted-foreground">Pagamento</legend>
           <div className="grid grid-cols-3 gap-2">
@@ -126,12 +130,19 @@ export function CartPanel(p: CartPanelProps) {
             })}
           </div>
         </fieldset>
+        )}
 
         <div className="flex items-center gap-3">
-          <label htmlFor="pos-discount" className="text-sm text-muted-foreground">Desconto</label>
+          <label htmlFor="pos-discount" className="text-sm text-muted-foreground">{isOrder ? "Sugerir desconto" : "Desconto"}</label>
           <Input id="pos-discount" inputMode="decimal" placeholder="R$ 0,00" value={p.discount}
             onChange={(e) => p.onDiscountChange(e.target.value)} className="text-right tabular-nums" />
         </div>
+
+        {isOrder && (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            É só uma sugestão: o gerente aplica (ou não) o desconto na hora de receber.
+          </p>
+        )}
 
         <dl className="space-y-1 text-sm">
           <div className="flex justify-between text-muted-foreground">
@@ -139,7 +150,7 @@ export function CartPanel(p: CartPanelProps) {
           </div>
           {p.discountCents > 0 && (
             <div className="flex justify-between text-success">
-              <dt>Desconto</dt><dd className="tabular-nums">− {brl(p.discountCents)}</dd>
+              <dt>{isOrder ? "Desconto sugerido" : "Desconto"}</dt><dd className="tabular-nums">− {brl(p.discountCents)}</dd>
             </div>
           )}
           <div className="flex items-baseline justify-between pt-1">
@@ -151,7 +162,7 @@ export function CartPanel(p: CartPanelProps) {
         </dl>
 
         <Button size="lg" className="w-full" disabled={p.lines.length === 0 || p.pending} onClick={p.onFinalize}>
-          {p.pending ? "Registrando…" : "Finalizar venda"}
+          {p.pending ? (isOrder ? "Enviando…" : "Registrando…") : isOrder ? "Enviar ao caixa" : "Finalizar venda"}
           {p.showShortcuts && !p.pending && (
             <kbd className="ml-1 hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-medium lg:inline">Enter</kbd>
           )}

@@ -48,6 +48,7 @@ export default async function OwnerSalesPage({
                 </p>
                 <p className="text-muted-foreground">
                   {when.format(s.createdAt)} · vendedor {names.get(s.sellerId) ?? "—"}
+                  {s.receivedBy && s.receivedBy !== s.sellerId && <> · recebido por {names.get(s.receivedBy) ?? "—"}</>}
                 </p>
                 <p className="text-muted-foreground">
                   {s.items.map((i) => `${i.quantity}× ${i.productName}${i.variantLabel ? ` (${i.variantLabel})` : ""}`).join(", ")}

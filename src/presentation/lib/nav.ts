@@ -8,36 +8,38 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   seller: "Vendedor",
 };
 
-const STORE_ADMIN_NAV: NavItem[] = [
-  { href: "/owner", label: "Painel", icon: "dashboard" },
-  { href: "/pos", label: "PDV", icon: "pos" },
-  { href: "/owner/products", label: "Produtos", icon: "products" },
-  { href: "/owner/sales", label: "Vendas", icon: "sales" },
-  { href: "/pos/cash-register", label: "Caixa", icon: "cash" },
-  { href: "/owner/labels", label: "Etiquetas", icon: "labels" },
-  { href: "/owner/sellers", label: "Equipe", icon: "sellers" },
-  { href: "/owner/categories", label: "Categorias", icon: "categories" },
-];
-
-const SELLER_NAV: NavItem[] = [
-  { href: "/pos", label: "PDV", icon: "pos" },
-  { href: "/pos/products", label: "Consulta", icon: "lookup" },
-  { href: "/pos/history", label: "Vendas", icon: "sales" },
-  { href: "/pos/cash-register", label: "Caixa", icon: "cash" },
-];
+export interface NavContext {
+  /** Comandas aguardando o caixa (aparece como contador em "Comandas"). */
+  pendingOrders?: number;
+}
 
 /**
  * O menu depende do PAPEL, não da rota: dono e gerente mantêm o mesmo menu ao abrir o PDV,
  * em vez de cair no menu do vendedor (que parecia outro login).
  */
-export function navFor(role: UserRole): NavItem[] {
+export function navFor(role: UserRole, ctx: NavContext = {}): NavItem[] {
   switch (role) {
     case "master":
       return [{ href: "/master/stores", label: "Lojas", icon: "store" }];
     case "owner":
     case "manager":
-      return STORE_ADMIN_NAV;
+      return [
+        { href: "/owner", label: "Painel", icon: "dashboard" },
+        { href: "/pos", label: "PDV", icon: "pos" },
+        { href: "/owner/orders", label: "Comandas", icon: "orders", badge: ctx.pendingOrders },
+        { href: "/owner/products", label: "Produtos", icon: "products" },
+        { href: "/owner/sales", label: "Vendas", icon: "sales" },
+        { href: "/pos/cash-register", label: "Caixa", icon: "cash" },
+        { href: "/owner/labels", label: "Etiquetas", icon: "labels" },
+        { href: "/owner/sellers", label: "Equipe", icon: "sellers" },
+        { href: "/owner/categories", label: "Categorias", icon: "categories" },
+      ];
     case "seller":
-      return SELLER_NAV;
+      return [
+        { href: "/pos", label: "Comanda", icon: "pos" },
+        { href: "/pos/orders", label: "Minhas comandas", icon: "orders" },
+        { href: "/pos/products", label: "Consulta", icon: "lookup" },
+        { href: "/pos/history", label: "Vendas", icon: "sales" },
+      ];
   }
 }

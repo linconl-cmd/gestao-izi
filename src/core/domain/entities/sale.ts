@@ -19,7 +19,10 @@ export interface SaleItem {
 export interface Sale {
   readonly id: string;
   readonly storeId: string;
+  /** Quem vendeu (comissão). */
   readonly sellerId: string;
+  /** Quem recebeu o pagamento (dono/gerente no caixa). */
+  readonly receivedBy: string | null;
   readonly cashRegisterId: string;
   readonly customerId: string | null;
   readonly paymentMethod: PaymentMethod;

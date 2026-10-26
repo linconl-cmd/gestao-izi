@@ -28,7 +28,7 @@ export async function registerSaleAction(input: unknown): Promise<RegisterSaleRe
   const d = parsed.data;
 
   try {
-    const { container, user } = await requireUser("owner", "manager", "seller");
+    const { container, user } = await requireUser("owner", "manager");
     const sale = await container.useCases.registerSale.execute(user, {
       cashRegisterId: d.cashRegisterId,
       paymentMethod: d.paymentMethod,

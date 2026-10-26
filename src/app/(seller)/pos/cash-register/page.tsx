@@ -11,7 +11,7 @@ export default async function CashRegisterPage({
 }) {
   const [{ error, ok }, { container, user }] = await Promise.all([
     searchParams,
-    requireUser("owner", "manager", "seller"),
+    requireUser("owner", "manager"),
   ]);
   const [open, recent] = await Promise.all([
     container.repositories.cashRegisters.findOpenByUser(user.id),

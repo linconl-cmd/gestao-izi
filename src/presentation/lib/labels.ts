@@ -1,3 +1,4 @@
+import type { OrderStatus } from "@/core/domain/entities/order";
 import type { PaymentMethod } from "@/core/domain/value-objects/payment-method";
 
 export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -7,4 +8,11 @@ export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   pix: "Pix",
   store_credit: "Crédito da loja",
   other: "Outro",
+};
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  open: "Aguardando caixa",
+  paid: "Recebida",
+  cancelled: "Cancelada",
+  expired: "Expirada",
 };

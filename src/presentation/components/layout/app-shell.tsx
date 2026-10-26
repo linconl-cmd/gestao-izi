@@ -9,6 +9,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
+  ClipboardList,
   ScanLine,
   Shapes,
   Shirt,
@@ -40,6 +41,7 @@ const ICONS = {
   grid: LayoutGrid,
   dashboard: LayoutDashboard,
   labels: Tags,
+  orders: ClipboardList,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof ICONS;
@@ -48,6 +50,8 @@ export interface NavItem {
   href: string;
   label: string;
   icon: NavIcon;
+  /** Contador (ex.: comandas aguardando o caixa). */
+  badge?: number;
 }
 
 const COLLAPSE_KEY = "izi:sidebar-collapsed";
@@ -142,8 +146,14 @@ export function AppShell({
                   collapsed && "justify-center px-0",
                 )}
               >
-                <Icon className="size-5 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
+                <span className="relative shrink-0">
+                  <Icon className="size-5" />
+                  {collapsed && !!item.badge && <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-destructive" />}
+                </span>
+                {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                {!collapsed && !!item.badge && (
+                  <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{item.badge}</span>
+                )}
               </Link>
             );
           })}
@@ -227,8 +237,11 @@ export function AppShell({
                     active && "text-primary",
                   )}
                 >
-                  <span className={cn("grid h-7 w-12 place-items-center rounded-full transition-colors", active && "bg-accent-soft")}>
+                  <span className={cn("relative grid h-7 w-12 place-items-center rounded-full transition-colors", active && "bg-accent-soft")}>
                     <Icon className="size-5" />
+                    {!!item.badge && (
+                      <span className="absolute -top-1 right-1 grid min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">{item.badge}</span>
+                    )}
                   </span>
                   <span className="max-w-full truncate">{item.label}</span>
                 </Link>

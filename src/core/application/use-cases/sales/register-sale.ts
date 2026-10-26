@@ -12,7 +12,7 @@ export class RegisterSale {
   constructor(private readonly sales: SaleRepository) {}
 
   async execute(actor: AuthUser, input: CreateSaleInput): Promise<Sale> {
-    assertRole(actor, "owner", "manager", "seller");
+    assertRole(actor, "owner", "manager");
     if (input.items.length === 0) throw new ValidationError("Sale must have at least one item");
 
     const merged = new Map<string, CreateSaleItemInput>();

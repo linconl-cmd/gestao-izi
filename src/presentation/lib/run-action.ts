@@ -20,6 +20,8 @@ export async function runAction(
   path: string,
   okMessage: string | null,
   work: () => Promise<void | string>,
+  /** Destino do sucesso (padrão: a mesma página). */
+  okPath?: string,
 ): Promise<never> {
   let failure: string | null = null;
   let message = okMessage;
@@ -30,6 +32,8 @@ export async function runAction(
     failure = userMessage(error);
   }
   if (failure) redirect(withFlash(path, "error", failure));
-  revalidatePath(path);
-  redirect(message ? withFlash(path, "ok", message) : path);
+  // Menu, contador de comandas e alertas moram no layout: revalida tudo.
+  revalidatePath("/", "layout");
+  const target = okPath ?? path;
+  redirect(message ? withFlash(target, "ok", message) : target);
 }

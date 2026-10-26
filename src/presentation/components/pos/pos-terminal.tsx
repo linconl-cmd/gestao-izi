@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ScanLine, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { PaymentMethod } from "@/core/domain/value-objects/payment-method";
+import { createOrderAction } from "@/presentation/actions/orders";
 import { registerSaleAction } from "@/presentation/actions/sales";
 import { ScannerDialog } from "@/presentation/components/scanner/scanner-dialog";
 import type { ScanOutcome } from "@/presentation/components/scanner/barcode-scanner";
@@ -19,6 +20,7 @@ import { cn } from "@/presentation/lib/utils";
 import { CartFab } from "./cart-fab";
 import { CartPanel } from "./cart-panel";
 import { ProductCard, type Flash } from "./product-card";
+import { OrderSuccess } from "./order-success";
 import { SaleSuccess } from "./sale-success";
 
 const SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XG", "XGG"];
@@ -31,7 +33,17 @@ const sizeRank = (s: string) => {
 
 const parseMoneyToCents = (text: string) => Math.max(0, Math.round(Number(text.replace(",", ".") || 0) * 100) || 0);
 
-export function PosTerminal({ catalog, cashRegisterId }: { catalog: PosCatalog; cashRegisterId: string }) {
+export function PosTerminal({
+  catalog,
+  cashRegisterId,
+  mode = "sale",
+}: {
+  catalog: PosCatalog;
+  /** Obrigatório em modo "sale" (recebimento direto no caixa de dono/gerente). */
+  cashRegisterId?: string;
+  /** "order" = vendedor monta a comanda e envia ao caixa. */
+  mode?: "sale" | "order";
+}) {
   const searchRef = useRef<HTMLInputElement>(null);
   const noticeId = useRef(0);
 
@@ -45,6 +57,7 @@ export function PosTerminal({ catalog, cashRegisterId }: { catalog: PosCatalog; 
   const [flash, setFlash] = useState<Flash | null>(null);
   const [notice, setNotice] = useState<ScanOutcome | null>(null);
   const [soldTotal, setSoldTotal] = useState<string | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<{ id: string; number: number } | null>(null);
   const [pending, startTransition] = useTransition();
 
   const index = useMemo(
@@ -128,6 +141,27 @@ export function PosTerminal({ catalog, cashRegisterId }: { catalog: PosCatalog; 
 
   const finalize = useCallback(() => {
     if (cart.lines.length === 0 || pending) return;
+    if (mode === "order") {
+      startTransition(async () => {
+        const result = await createOrderAction({
+          discountCents,
+          items: cart.lines.map((l) => ({ variantId: l.variant.variantId, quantity: l.quantity })),
+        });
+        if (result.ok) {
+          cart.clear();
+          setDiscount("");
+          setQuery("");
+          setCartOpen(false);
+          setCreatedOrder({ id: result.id, number: result.number });
+          scanFeedback("success");
+        } else {
+          say("error", result.error);
+          scanFeedback("error");
+        }
+      });
+      return;
+    }
+    if (!cashRegisterId) return;
     startTransition(async () => {
       const result = await registerSaleAction({
         cashRegisterId,
@@ -147,7 +181,7 @@ export function PosTerminal({ catalog, cashRegisterId }: { catalog: PosCatalog; 
         scanFeedback("error");
       }
     });
-  }, [cart, pending, cashRegisterId, payment, discountCents, say]);
+  }, [cart, pending, mode, cashRegisterId, payment, discountCents, say]);
 
   useEffect(() => {
     if (!soldTotal) return;
@@ -161,10 +195,11 @@ export function PosTerminal({ catalog, cashRegisterId }: { catalog: PosCatalog; 
       toggleScanner: () => setScanOpen((o) => !o),
       finalize,
     },
-    !scanOpen && !cartOpen && !soldTotal,
+    !scanOpen && !cartOpen && !soldTotal && !createdOrder,
   );
 
   const cartProps = {
+    mode,
     lines: cart.lines,
     subtotalCents: cart.subtotalCents,
     discount,
@@ -270,6 +305,7 @@ export function PosTerminal({ catalog, cashRegisterId }: { catalog: PosCatalog; 
 
       <ScannerDialog open={scanOpen} onOpenChange={setScanOpen} onDetect={onCode} outcome={notice} />
       <SaleSuccess total={soldTotal} onDone={() => setSoldTotal(null)} />
+      <OrderSuccess order={createdOrder} onDone={() => setCreatedOrder(null)} />
 
       {/* Aviso flutuante (fora do leitor) */}
       <AnimatePresence>

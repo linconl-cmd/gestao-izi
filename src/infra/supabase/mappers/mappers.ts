@@ -1,6 +1,8 @@
 import type { CashRegister } from "@/core/domain/entities/cash-register";
 import type { Category } from "@/core/domain/entities/category";
 import type { Customer } from "@/core/domain/entities/customer";
+import type { Notification } from "@/core/domain/entities/notification";
+import type { Order, OrderItem } from "@/core/domain/entities/order";
 import type { Product, ProductCost, ProductVariant } from "@/core/domain/entities/product";
 import type { Profile } from "@/core/domain/entities/profile";
 import type { Sale, SaleItem } from "@/core/domain/entities/sale";
@@ -10,6 +12,9 @@ import type {
   CashRegisterRow,
   CategoryRow,
   CustomerRow,
+  NotificationRow,
+  OrderItemRow,
+  OrderRow,
   ProductCostRow,
   ProductRow,
   ProfileRow,
@@ -121,6 +126,7 @@ export const toSale = (r: SaleRow): Sale => ({
   id: r.id,
   storeId: r.store_id,
   sellerId: r.seller_id,
+  receivedBy: r.received_by,
   cashRegisterId: r.cash_register_id,
   customerId: r.customer_id,
   paymentMethod: r.payment_method,
@@ -134,4 +140,47 @@ export const toSale = (r: SaleRow): Sale => ({
   cancelledBy: r.cancelled_by,
   cancelReason: r.cancel_reason,
   items: (r.sale_items ?? []).map(toSaleItem),
+});
+
+export const toOrderItem = (r: OrderItemRow): OrderItem | null => {
+  const v = r.product_variants;
+  if (!v) return null;
+  const base = v.products?.base_price ?? 0;
+  return {
+    variantId: r.variant_id,
+    quantity: r.quantity,
+    productName: v.products?.name ?? "Produto",
+    size: v.size,
+    color: v.color,
+    sku: v.sku,
+    unitPrice: Money.fromDecimal(v.price ?? base),
+    stock: v.stock_quantity,
+  };
+};
+
+export const toOrder = (r: OrderRow): Order => ({
+  id: r.id,
+  storeId: r.store_id,
+  number: r.number,
+  sellerId: r.seller_id,
+  status: r.status,
+  suggestedDiscount: Money.fromDecimal(r.suggested_discount),
+  notes: r.notes,
+  businessDate: r.business_date,
+  saleId: r.sale_id,
+  cancelReason: r.cancel_reason,
+  createdAt: new Date(r.created_at),
+  closedAt: r.closed_at === null ? null : new Date(r.closed_at),
+  closedBy: r.closed_by,
+  items: (r.order_items ?? []).flatMap((i) => toOrderItem(i) ?? []),
+});
+
+export const toNotification = (r: NotificationRow): Notification => ({
+  id: r.id,
+  storeId: r.store_id,
+  kind: r.kind,
+  title: r.title,
+  body: r.body,
+  createdAt: new Date(r.created_at),
+  readAt: r.read_at === null ? null : new Date(r.read_at),
 });
