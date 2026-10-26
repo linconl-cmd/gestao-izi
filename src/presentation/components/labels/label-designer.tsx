@@ -9,7 +9,7 @@ import { Input } from "@/presentation/components/ui/input";
 import { LABEL_PRESETS, labelsPerPage, type LabelLayout } from "@/presentation/lib/label-presets";
 import { brl, type PosCatalog, variantLabel } from "@/presentation/lib/pos-types";
 import { cn } from "@/presentation/lib/utils";
-import type { LabelOptions } from "./label-cell";
+import { codeOf, estimateModuleMm, type LabelOptions } from "./label-cell";
 import { LabelSheet, type LabelSlot } from "./label-sheet";
 
 const MAX_LABELS = 2000;
@@ -35,7 +35,7 @@ export function LabelDesigner({
 }) {
   const [presetId, setPresetId] = useState(LABEL_PRESETS[0]!.id);
   const [layout, setLayout] = useState<LabelLayout>(LABEL_PRESETS[0]!.layout);
-  const [options, setOptions] = useState<LabelOptions>({ showName: true, showPrice: true, code: "barcode", showCodeText: true });
+  const [options, setOptions] = useState<LabelOptions>({ showName: true, showSku: true, showPrice: true, code: "barcode", showCodeText: true });
   const [qty, setQty] = useState<Record<string, number>>(initial);
   const [skip, setSkip] = useState(0);
   const [query, setQuery] = useState("");
@@ -74,6 +74,12 @@ export function LabelDesigner({
   }, [selected, skip, preset.kind, perPage]);
 
   const pages = Math.ceil(slots.length / perPage);
+
+  // Pior caso entre as etiquetas escolhidas: o código mais longo gera as barras mais finas.
+  const thinnestBarMm = options.code === "barcode" && selected.length > 0
+    ? Math.min(...selected.map(({ v }) => estimateModuleMm(codeOf(v), layout.widthMm, layout.heightMm)))
+    : null;
+  const barcodeTooSmall = thinnestBarMm !== null && thinnestBarMm < 0.17;
 
   function choosePreset(id: string) {
     const p = LABEL_PRESETS.find((x) => x.id === id)!;
@@ -213,6 +219,7 @@ export function LabelDesigner({
         <Card className="gap-3 rounded-2xl p-4 shadow-soft">
           <h2 className="font-semibold">3 · Conteúdo</h2>
           <Toggle label="Nome do produto" checked={options.showName} onChange={(v) => setOptions((o) => ({ ...o, showName: v }))} />
+          <Toggle label="SKU (texto)" checked={options.showSku} onChange={(v) => setOptions((o) => ({ ...o, showSku: v }))} />
           <Toggle label="Preço" checked={options.showPrice} onChange={(v) => setOptions((o) => ({ ...o, showPrice: v }))} />
           <div className="grid grid-cols-3 gap-2">
             {([["barcode", "Barras"], ["qr", "QR Code"], ["none", "Sem código"]] as const).map(([value, text]) => (
@@ -256,6 +263,12 @@ export function LabelDesigner({
               {preset.kind === "thermal" ? `, e defina o papel como ${layout.widthMm} × ${layout.heightMm} mm no driver da impressora.` : "."}
               {" "}Imprima primeiro uma folha de teste em papel comum e confira o alinhamento.
             </p>
+            {barcodeTooSmall && (
+              <p role="alert" className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-xs">
+                <strong>Código de barras apertado para {layout.widthMm} × {layout.heightMm} mm</strong> (barras de ~{thinnestBarMm!.toFixed(2)} mm): leitores podem falhar.
+                Use <strong>QR Code</strong>, uma etiqueta maior ou um código de barras mais curto.
+              </p>
+            )}
             <div className="overflow-auto rounded-2xl bg-muted/50 p-4 print:overflow-visible print:bg-transparent print:p-0">
               <LabelSheet slots={slots} layout={layout} kind={preset.kind} options={options} zoom={zoom} />
             </div>
