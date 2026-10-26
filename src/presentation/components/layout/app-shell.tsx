@@ -59,14 +59,23 @@ function isActive(pathname: string, href: string, all: NavItem[]): boolean {
   return !all.some((o) => o.href !== href && o.href.startsWith(`${href}/`) && pathname.startsWith(o.href));
 }
 
+export interface ShellUser {
+  name: string;
+  roleLabel: string;
+}
+
 export function AppShell({
   title,
   nav,
+  user,
   wide = false,
   children,
 }: {
   title: string;
   nav: NavItem[];
+  /** Quem está logado: sempre visível, para ninguém ficar em dúvida de qual conta está usando. */
+  user?: ShellUser;
+
   /** Largura total (PDV); false = coluna centralizada. */
   wide?: boolean;
   children: ReactNode;
@@ -140,6 +149,20 @@ export function AppShell({
           })}
         </nav>
 
+        {user && (
+          <div className={cn("flex items-center gap-3 border-t px-4 py-3", collapsed && "justify-center px-0")} title={`${user.name} · ${user.roleLabel}`}>
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent-soft-foreground">
+              {user.name.trim().charAt(0).toUpperCase() || "?"}
+            </span>
+            {!collapsed && (
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-sm font-medium">{user.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">{user.roleLabel}</span>
+              </span>
+            )}
+          </div>
+        )}
+
         <div className={cn("flex items-center gap-1 border-t p-3", collapsed ? "flex-col" : "justify-between")}>
           <Button variant="ghost" size="icon" onClick={toggle} aria-label={collapsed ? "Expandir menu" : "Recolher menu"}>
             {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
@@ -156,11 +179,14 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barra superior (mobile) */}
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur md:hidden print:hidden">
-          <span className="flex items-center gap-2 text-sm font-semibold">
-            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+          <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Shirt className="size-4" />
             </span>
-            {title}
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate">{title}</span>
+              {user && <span className="block truncate text-[11px] font-normal text-muted-foreground">{user.name} · {user.roleLabel}</span>}
+            </span>
           </span>
           <span className="flex items-center">
             <ThemeToggle />

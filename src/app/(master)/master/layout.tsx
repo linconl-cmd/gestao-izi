@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
-import { AppShell } from "@/presentation/components/layout/app-shell";
+import { RoleShell } from "@/presentation/components/layout/role-shell";
 
 export default function MasterLayout({ children }: { children: ReactNode }) {
-  return (
-    <AppShell title="Izi · Master" nav={[{ href: "/master/stores", label: "Lojas", icon: "store" }]}>
-      {children}
-    </AppShell>
-  );
+  return <RoleShell roles={["master"]}>{children}</RoleShell>;
 }
