@@ -59,6 +59,12 @@ export interface ProductRepository {
   /** Retorna o produto contendo apenas a variante lida (leitura de QR/código de barras). */
   findByBarcode(barcode: Barcode): Promise<Product | null>;
   listLowStock(): Promise<Product[]>;
+  /** Maior sequência já usada em códigos de barras internos (0 se nenhum). */
+  maxInternalBarcodeSeq(): Promise<number>;
+  /** Variantes sem código de barras (de um produto ou da loja toda). */
+  listVariantIdsWithoutBarcode(productId?: string): Promise<string[]>;
+  /** SKUs já usados na loja que começam com o prefixo (para gerar um SKU livre). */
+  listSkusWithPrefix(prefix: string): Promise<string[]>;
   create(input: NewProductInput): Promise<Product>;
   update(id: string, patch: ProductPatch): Promise<void>;
   addVariant(storeId: string, productId: string, input: NewVariantInput): Promise<ProductVariant>;

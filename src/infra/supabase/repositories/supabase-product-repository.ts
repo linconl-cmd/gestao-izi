@@ -9,6 +9,7 @@ import type {
   ProductSearchParams,
   VariantPatch,
 } from "@/core/domain/repositories/product-repository";
+import { INTERNAL_EAN_PREFIX, internalSeqOf } from "@/core/domain/services/ean13";
 import type { Barcode } from "@/core/domain/value-objects/barcode";
 import type { Money } from "@/core/domain/value-objects/money";
 import { toProduct, toProductCost, toVariant } from "../mappers/mappers";
@@ -65,6 +66,37 @@ export class SupabaseProductRepository implements ProductRepository {
     if (!data?.products) return null;
     const { products, ...variant } = data;
     return toProduct(products, [variant]);
+  }
+
+  async listSkusWithPrefix(prefix: string): Promise<string[]> {
+    const { data, error } = await this.db
+      .from("product_variants")
+      .select("sku")
+      .ilike("sku", `${escapeLike(prefix)}%`)
+      .limit(500)
+      .returns<{ sku: string }[]>();
+    assertNoError(error);
+    return (data ?? []).map((r) => r.sku);
+  }
+
+  async maxInternalBarcodeSeq(): Promise<number> {
+    const { data, error } = await this.db
+      .from("product_variants")
+      .select("barcode")
+      .like("barcode", `${INTERNAL_EAN_PREFIX}__________`)
+      .order("barcode", { ascending: false })
+      .limit(1)
+      .returns<{ barcode: string | null }[]>();
+    assertNoError(error);
+    return internalSeqOf(data?.[0]?.barcode ?? "") ?? 0;
+  }
+
+  async listVariantIdsWithoutBarcode(productId?: string): Promise<string[]> {
+    let q = this.db.from("product_variants").select("id").is("barcode", null).order("created_at").limit(1000);
+    if (productId) q = q.eq("product_id", productId);
+    const { data, error } = await q.returns<{ id: string }[]>();
+    assertNoError(error);
+    return (data ?? []).map((r) => r.id);
   }
 
   async listLowStock(): Promise<Product[]> {

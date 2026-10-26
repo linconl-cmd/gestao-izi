@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { isLowStock } from "@/core/domain/entities/product";
-import { createProductAction } from "@/presentation/actions/catalog";
+import { generateBarcodesAction } from "@/presentation/actions/catalog";
+import { ProductGridForm } from "@/presentation/components/catalog/product-grid-form";
 import { Flash } from "@/presentation/components/layout/app-shell";
-import { buttonClass, inputClass } from "@/presentation/components/shared/styles";
+import { buttonClass, inputClass, linkButtonClass } from "@/presentation/components/shared/styles";
 import { requireUser } from "@/presentation/lib/require-user";
 
 export default async function OwnerProductsPage({
@@ -21,6 +22,9 @@ export default async function OwnerProductsPage({
       <section>
         <h1 className="mb-6 text-2xl font-semibold tracking-tight">Produtos</h1>
         <Flash error={error} ok={ok} />
+        <form action={generateBarcodesAction} className="mb-3">
+          <button type="submit" className={linkButtonClass}>Gerar códigos de barras que faltam</button>
+        </form>
         <form className="mb-4 flex gap-2">
           <input name="q" defaultValue={q} placeholder="Buscar por nome" className={`${inputClass} flex-1`} />
           <button type="submit" className={buttonClass}>Buscar</button>
@@ -57,33 +61,7 @@ export default async function OwnerProductsPage({
 
       <section>
         <h2 className="mb-4 text-lg font-semibold">Novo produto</h2>
-        <form action={createProductAction} className="flex flex-col gap-3">
-          <input name="name" required placeholder="Nome" className={inputClass} />
-          <input name="brand" placeholder="Marca" className={inputClass} />
-          <select name="categoryId" className={inputClass} defaultValue="">
-            <option value="">Sem categoria</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <div className="grid grid-cols-2 gap-2">
-            <input name="basePrice" required inputMode="decimal" placeholder="Preço (R$)" className={inputClass} />
-            {user.role === "owner" && (
-              <input name="costPrice" inputMode="decimal" placeholder="Custo (R$)" className={inputClass} />
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">Primeira variante</p>
-          <div className="grid grid-cols-2 gap-2">
-            <input name="size" placeholder="Tamanho" className={inputClass} />
-            <input name="color" placeholder="Cor" className={inputClass} />
-            <input name="sku" required placeholder="SKU" className={inputClass} />
-            <input name="barcode" placeholder="Código de barras" className={inputClass} />
-            <input name="stockQuantity" type="number" min={0} defaultValue={0} placeholder="Estoque" className={inputClass} />
-            <input name="minStock" type="number" min={0} defaultValue={0} placeholder="Estoque mín." className={inputClass} />
-          </div>
-          <input name="variantPrice" inputMode="decimal" placeholder="Preço da variante (opcional)" className={inputClass} />
-          <button type="submit" className={buttonClass}>Criar produto</button>
-        </form>
+        <ProductGridForm categories={categories.map((c) => ({ id: c.id, name: c.name }))} canSeeCost={user.role === "owner"} />
       </section>
     </div>
   );

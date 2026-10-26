@@ -2,6 +2,7 @@
 
 import { QRCodeSVG } from "qrcode.react";
 import { brl, type PosVariant, variantLabel } from "@/presentation/lib/pos-types";
+import { isValidEan13 } from "@/core/domain/services/ean13";
 import { BarcodeSvg } from "./barcode-svg";
 
 export interface LabelOptions {
@@ -24,11 +25,12 @@ export const BARCODE_WIDTH_SHARE = 0.5;
  * (2 dígitos por símbolo). Abaixo de ~0,17 mm (≈1,3 ponto a 203 dpi) leitores falham.
  */
 export function estimateModuleMm(value: string, widthMm: number, heightMm: number): number {
+  const wide = widthMm / heightMm > 1.4;
+  const boxMm = (wide ? widthMm * BARCODE_WIDTH_SHARE : widthMm) - 2.4;
+  if (isValidEan13(value)) return boxMm / 113; // 95 módulos + zonas de silêncio
   const numeric = /^\d+$/.test(value);
   const symbols = numeric ? Math.ceil(value.length / 2) + (value.length % 2 ? 1 : 0) : value.length;
   const modules = (symbols + 3) * 11 + 2;
-  const wide = widthMm / heightMm > 1.4;
-  const boxMm = (wide ? widthMm * BARCODE_WIDTH_SHARE : widthMm) - 2.4;
   return boxMm / modules;
 }
 
@@ -49,7 +51,12 @@ export function LabelCell({
   // Texto à esquerda e código à direita em qualquer etiqueta retangular; só as quase quadradas empilham.
   const wide = widthMm / heightMm > 1.4;
   const hasCode = options.code !== "none";
-  const qrMm = wide ? Math.min(heightMm * 0.78, widthMm * 0.36) : heightMm * 0.5;
+  // Com QR, o SKU fica logo abaixo dele (centralizado) para ler/conferir o código sem procurar no texto.
+  const skuUnderQr = options.code === "qr" && options.showSku;
+  const skuBandMm = skuUnderQr ? Math.max(2, 2.2 * s) + 1 : 0;
+  const qrMm = wide
+    ? Math.min(heightMm - 2.4 - skuBandMm, widthMm * 0.36)
+    : Math.min(heightMm * 0.5 - skuBandMm, widthMm - 2.4);
   const label = variantLabel(variant);
 
   const text = (
@@ -59,7 +66,7 @@ export function LabelCell({
           <p className="line-clamp-2 font-medium" style={{ fontSize: pt(7, 5) }}>{variant.productName}</p>
         )}
         {label && <p className="font-bold" style={{ fontSize: pt(9, 6) }}>{label}</p>}
-        {options.showSku && (
+        {options.showSku && !skuUnderQr && (
           <p className="break-all font-mono" style={{ fontSize: pt(5.5, 4) }}>SKU {variant.sku}</p>
         )}
       </div>
@@ -70,8 +77,11 @@ export function LabelCell({
   );
 
   const code = !hasCode ? null : options.code === "qr" ? (
-    <div className="grid shrink-0 place-items-center" style={{ width: `${qrMm}mm`, height: `${qrMm}mm` }}>
-      <QRCodeSVG value={codeOf(variant)} level="M" marginSize={0} className="size-full" />
+    <div className="flex shrink-0 flex-col items-center justify-center gap-[1mm]" style={{ width: `${wide ? widthMm * 0.36 : qrMm}mm` }}>
+      <QRCodeSVG value={codeOf(variant)} level="M" marginSize={0} style={{ width: `${qrMm}mm`, height: `${qrMm}mm` }} />
+      {skuUnderQr && (
+        <p className="w-full break-all text-center font-mono leading-none" style={{ fontSize: pt(5.5, 4) }}>{variant.sku}</p>
+      )}
     </div>
   ) : (
     <div className="shrink-0" style={wide ? { width: `${BARCODE_WIDTH_SHARE * 100}%`, height: "100%" } : { width: "100%", height: `${heightMm * 0.36}mm` }}>
@@ -81,7 +91,7 @@ export function LabelCell({
 
   return (
     <div
-      className={`box-border flex overflow-hidden bg-white p-[1.2mm] text-black ${wide ? "flex-row items-center gap-[1.5mm]" : "flex-col gap-[0.8mm]"}`}
+      className={`box-border flex overflow-hidden bg-white p-[1.2mm] text-black ${wide ? "flex-row items-stretch gap-[1.5mm]" : "flex-col gap-[0.8mm]"}`}
       style={{ width: `${widthMm}mm`, height: `${heightMm}mm` }}
     >
       {text}

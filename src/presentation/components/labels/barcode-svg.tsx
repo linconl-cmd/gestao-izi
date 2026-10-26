@@ -2,8 +2,9 @@
 
 import JsBarcode from "jsbarcode";
 import { useEffect, useRef } from "react";
+import { isValidEan13 } from "@/core/domain/services/ean13";
 
-/** Code 128 em SVG vetorial (nítido em térmica 203 dpi e em jato de tinta). Escala para 100% do contêiner. */
+/** EAN-13 (códigos válidos de 13 dígitos) ou Code 128 em SVG vetorial (nítido em térmica 203 dpi e em jato de tinta). Escala para 100% do contêiner. */
 export function BarcodeSvg({ value, showText = true }: { value: string; showText?: boolean }) {
   const ref = useRef<SVGSVGElement>(null);
 
@@ -12,7 +13,7 @@ export function BarcodeSvg({ value, showText = true }: { value: string; showText
     if (!svg) return;
     try {
       JsBarcode(svg, value, {
-        format: "CODE128",
+        format: isValidEan13(value) ? "EAN13" : "CODE128",
         displayValue: showText,
         fontSize: 14,
         textMargin: 1,

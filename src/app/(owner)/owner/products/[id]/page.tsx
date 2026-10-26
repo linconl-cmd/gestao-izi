@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   addVariantAction,
+  generateBarcodesAction,
   setProductActiveAction,
   updateProductAction,
   updateVariantAction,
@@ -52,7 +53,15 @@ export default async function ProductDetailPage({
         </button>
       </form>
 
-      <h2 className="mb-2 text-lg font-semibold">Variantes</h2>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Variantes</h2>
+        {product.variants.some((v) => !v.barcode) && (
+          <form action={generateBarcodesAction}>
+            <input type="hidden" name="productId" value={product.id} />
+            <button type="submit" className={linkButtonClass}>Gerar códigos de barras que faltam</button>
+          </form>
+        )}
+      </div>
       <ul className="mb-8 divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-soft">
         {product.variants.map((v) => (
           <li key={v.id} className="px-4 py-3">
@@ -89,8 +98,8 @@ export default async function ProductDetailPage({
         <input type="hidden" name="productId" value={product.id} />
         <input name="size" placeholder="Tamanho" className={inputClass} />
         <input name="color" placeholder="Cor" className={inputClass} />
-        <input name="sku" required placeholder="SKU" className={inputClass} />
-        <input name="barcode" placeholder="Código de barras" className={inputClass} />
+        <input name="sku" placeholder="SKU (vazio = automático)" className={inputClass} />
+        <input name="barcode" placeholder="Código de barras (vazio = gerar)" className={inputClass} />
         <input name="stockQuantity" type="number" min={0} defaultValue={0} className={inputClass} />
         <input name="minStock" type="number" min={0} defaultValue={0} className={inputClass} />
         <input name="variantPrice" inputMode="decimal" placeholder="Preço (opcional)" className={inputClass} />
